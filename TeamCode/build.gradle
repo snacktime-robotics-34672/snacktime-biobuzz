@@ -77,7 +77,7 @@ dependencies {
     implementation "dev.frozenmilk.sinister:Sloth:0.2.4" // Sloth hot-reload runtime
 
     // Pedro Pathing
-    implementation 'com.pedropathing:ftc:2.0.6'
+    implementation 'com.pedropathing:ftc:2.1.2'
     implementation 'com.pedropathing:telemetry:1.0.0'
 
     // Panels Dashboard
