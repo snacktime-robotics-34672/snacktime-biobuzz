@@ -39,6 +39,10 @@ android {
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 repositories {
@@ -78,4 +82,7 @@ dependencies {
 
     // Panels Dashboard
     implementation "com.bylazar:fullpanels:1.0.12"
+
+    // Off-robot unit tests (CLAUDE.md §9) — test-only, does not affect the APK
+    testImplementation "junit:junit:4.13.2"
 }
