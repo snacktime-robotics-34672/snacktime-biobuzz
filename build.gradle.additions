@@ -1,0 +1,117 @@
+// =====================================================================================
+//  build.gradle additions — Snack Time Robotics (FTC 34672)
+//
+//  SCOPE: this file used to describe installing the whole stack. It no longer does.
+//  The SolversLib Quickstart ALREADY ships SolversLib, Pedro, Panels, and all four
+//  needed maven repos (verified 2026-07-16 — see STATUS.md for the full inventory).
+//
+//  What follows is ONLY what is still missing. Everything else: do not add, it's there.
+//
+//  Per CLAUDE.md section 6: every change below is a dependency change ->
+//  WARN AND CONFIRM with a human first, one at a time, build after each.
+//  Version numbers are EXAMPLES — look up current ones.
+// =====================================================================================
+
+
+// -------------------------------------------------------------------------------------
+//  ALREADY PRESENT — DO NOT RE-ADD (TeamCode/build.gradle)
+// -------------------------------------------------------------------------------------
+//    org.solverslib:core:0.3.4
+//    org.solverslib:pedroPathing:0.3.4
+//    com.pedropathing:ftc:2.0.6            <- our own line; we own this version
+//    com.pedropathing:telemetry:1.0.0
+//    com.bylazar:fullpanels:1.0.12         <- full Panels bundle; nothing to add
+//    com.acmerobotics.dashboard:dashboard:0.5.1   <- see the Sloth conflict below
+//
+//  Repos already present: maven.brott.dev, mymaven.bylazar.com/releases,
+//                         repo.dairy.foundation/releases, repo.dairy.foundation/snapshots
+//  -> Sloth needs NO new repository.
+//
+//  Already set in FtcRobotController/build.gradle: minSdkVersion 24, Java 8, compileSdk 34.
+//  -> SolversLib's requirements are already satisfied. Nothing to change.
+
+
+// -------------------------------------------------------------------------------------
+//  1) SLOTH — hot reload. The only substantial item left.
+//     Follow the official guide: github.com/Dairy-Foundation/Sloth  (do NOT work from memory)
+// -------------------------------------------------------------------------------------
+//  a) TeamCode/build.gradle, top of file — the plugin classpath.
+//     (The dairy repo is already in the project's repositories, but buildscript needs its own.)
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url = "https://repo.dairy.foundation/releases" }
+    }
+    dependencies {
+        classpath "dev.frozenmilk:Load:0.2.4"      // pin the CURRENT version
+    }
+}
+
+//  b) apply the plugin (after the existing `apply from:` lines)
+apply plugin: 'dev.frozenmilk.sinister.sloth.load'
+
+//  c) *** THE KNOWN LANDMINE ***
+//     Sloth ships its OWN modified fork of FTC Dashboard. TeamCode/build.gradle currently has:
+//         implementation "com.acmerobotics.dashboard:dashboard:0.5.1"
+//     Sloth's docs warn that a library pulling dashboard via implementation/api must be excluded.
+//     Resolve this DELIBERATELY per Sloth's current docs — likely either an exclude, or switching
+//     that line to compileOnly. Do not guess; this is the one hazard in the whole install.
+//
+//     Reminder (CLAUDE.md section 6): Sloth only hot-reloads code under
+//     org.firstinspires.ftc.teamcode. Dependency changes still need a FULL install.
+
+
+// -------------------------------------------------------------------------------------
+//  2) GIT HASH BUILDCONFIG — so hardware/BuildInfo.java works (sections 7 and 12)
+//     BuildInfo reads org.firstinspires.ftc.teamcode.BuildConfig, so these fields must be on
+//     the TEAMCODE module (FtcRobotController's BuildConfig is a different namespace).
+//
+//     CHECK FIRST: does build.common.gradle already set `buildConfig = true`? If so, only add
+//     the two fields. A working example of this exact pattern already exists in this repo —
+//     FtcRobotController/build.gradle injects APP_BUILD_TIME the same way.
+// -------------------------------------------------------------------------------------
+android {
+    buildFeatures {
+        buildConfig = true        // only if not already enabled for TeamCode
+    }
+
+    def gitHash = "unknown"
+    def buildTime = new Date().format("yyyy-MM-dd'T'HH:mm:ss")
+    try {
+        gitHash = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
+    } catch (ignored) { }
+
+    defaultConfig {
+        buildConfigField "String", "GIT_HASH", "\"${gitHash}\""
+        buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true    // lets the off-robot unit tests run
+    }
+}
+
+
+// -------------------------------------------------------------------------------------
+//  3) JUNIT — off-robot unit tests (section 9), so `./gradlew :TeamCode:test` runs
+// -------------------------------------------------------------------------------------
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}
+
+
+// -------------------------------------------------------------------------------------
+//  4) OPTIONAL — PHOTON. Already commented out in TeamCode/build.gradle, one uncomment away.
+//     A loop-time optimization library — directly relevant to the prime directive (section 0).
+//     MEASURE Loop Hz before and after; don't assume it helps. WARN-AND-CONFIRM.
+// -------------------------------------------------------------------------------------
+//     implementation "org.solverslib:photon:0.3.4"
+
+
+// -------------------------------------------------------------------------------------
+//  5) PEDRO — currently 2.0.6. Policy is "always latest" (section 2) and 2.1.2 exists.
+//     Bump it as ONE isolated change AFTER the stack is proven, then prove path-following
+//     again (a mismatch appears at RUNTIME, not at build). It's a one-line edit here:
+//         implementation 'com.pedropathing:ftc:2.0.6'   ->   2.1.2
+//     Nothing else declares Pedro, so there's no conflict to lose. See STATUS.md.
+// -------------------------------------------------------------------------------------
