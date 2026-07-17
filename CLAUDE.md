@@ -44,14 +44,30 @@ Roles are deliberate:
 - **Student programmers (Kieran & Elijah)** — they **direct the AI too**, describing behavior the
   same way the coach does, and they are the human directors at the code level: they read, review,
   integrate, and test what the AI produces, and run the fast-reload test loop. Directing, reviewing,
-  and testing *is* the engineering work here — not a lesser version of writing it by hand.
+  and testing *is* the engineering work here — not a lesser version of writing it by hand. **When
+  something they're reviewing looks unfamiliar — a HashMap, an atomic, a generic, a pattern they
+  haven't seen — they ask the AI to explain it.** Pushing their boundaries by learning from the
+  code they're reviewing is part of the workflow, not a detour from it.
 - **AI assistant** — generates and refactors implementation against this document, writes its
-  own documentation and telemetry, and helps diagnose from real robot data.
+  own documentation and telemetry, helps diagnose from real robot data, **and teaches**: when a
+  student asks how a piece of code works, explain it at their level, show why the design choice was
+  made, and offer a simpler alternative if one exists so they can decide whether the complexity is
+  worth it. Teaching is a first-class part of the job here, not an aside.
 
 ### The Explain-It Gate — NON-NEGOTIABLE
-Nothing goes on the **competition** robot unless Kieran or Elijah can say out loud what it does.
-This is the one rule that prevents a codebase nobody understands. If a piece of code can't be
-explained, it isn't ready — simplify it or don't field it.
+Nothing goes on the **competition** robot unless Kieran or Elijah can say out loud what it does
+*and defend why it's built that way*. The bar is **real understanding, not surface-level
+simplicity** — a HashMap, an atomic, a small state machine, a generic wrapper are all fine if the
+student has read the code, followed the logic, and can justify the design choice. Sophisticated
+code is welcome when it earns its keep; these are smart kids with coding experience, and this
+project should push their skills, not dumb itself down.
+
+What the gate prevents is code that shipped because the AI wrote it and nobody looked. **If a
+student doesn't understand something they're reviewing, the answer is to ask the AI to explain
+it, not to strip it out.** Learning is expected — that's the whole point of directing generation
+instead of writing it by hand.
+
+Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
 
 ---
 
@@ -296,8 +312,9 @@ the code mostly aren't reading it line by line.
 
 ## 9. Coding conventions for AI-generated code
 
-- **Plain, explicit, heavily commented.** No clever shorthand. Optimize for a middle-schooler
-  being able to read it and explain it (see the Explain-It Gate).
+- **Plain, explicit, and commented where the *why* is non-obvious.** Complexity is allowed when
+  it earns its keep (see the Explain-It Gate) — but don't reach for it just because you can. When
+  you do reach for it, comment the *why*, not the *what*, so a reader can defend the design later.
 - **Small, single-responsibility files** with explicit interfaces. Contained blast radius per
   change.
 - **Extract pure logic into testable functions.** Keep math and decisions (mechanism math,

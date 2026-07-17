@@ -1,6 +1,6 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-07-17 — Sloth hot-reload proven on the hub.
+**Last updated:** 2026-07-17 — Sloth hot-reload proven on the hub; 11 patterns ported from decode-2025 (see CHANGELOG).
 
 **Read `CLAUDE.md` first** — that's the charter (rules + architecture) and it governs everything.
 This file is only the *current state*: what's verified, what's left, and what to do next. Keep it
