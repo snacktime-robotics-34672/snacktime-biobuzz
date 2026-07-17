@@ -1,6 +1,6 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-07-17 — Sloth hot-reload proven on the hub; 11 patterns ported from decode-2025 (see CHANGELOG).
+**Last updated:** 2026-07-17 — Phase 0 mostly proven; 11 patterns ported from decode-2025; Explain-It Gate relaxed.
 
 **Read `CLAUDE.md` first** — that's the charter (rules + architecture) and it governs everything.
 This file is only the *current state*: what's verified, what's left, and what to do next. Keep it
@@ -8,22 +8,34 @@ updated as things change; it's the handoff between sessions.
 
 Everything below was **verified by running commands on Aaron's Mac**, not assumed from docs. That
 distinction matters: earlier in planning we twice got burned by trusting a library's claims instead
-of checking. Verify, don't assume (`SETUP.md` ground rule 1).
+of checking. Verify, don't assume.
 
 ---
 
 ## Where we are
 
-`SETUP.md` **Phases 1–5 are DONE and PROVEN:**
+**Phase 0 (§13 of CLAUDE.md) acceptance status:**
+- ✅ Base stack builds and deploys (SETUP.md Phases 1–5)
+- ✅ **Sloth hot-reload proven on-robot** — sub-second load confirmed 2026-07-17
+- ✅ `GIT_HASH` + `BUILD_TIME` in TeamCode `BuildConfig` (verified in generated source)
+- ✅ JUnit tests run off-robot (`./gradlew :TeamCode:test` — all green)
+- ⏳ **Snapshot writes proof on-robot** (still pending)
+- ⏳ **Pedro follows a path proof on-robot** (still pending — needs Pinpoint mounted + pod offsets)
 
-- Forked `FTC-23511/SolversLib-Quickstart` → own repo (local folder: `biobuzz-2026`).
-- Cloned into Android Studio, Gradle sync clean.
-- **Builds successfully.**
-- **Deploys to the Control Hub** — example OpModes visible on the Driver Hub.
-- Android SDK Platform 34 installed (the project requires `compileSdk 34`; API 35 alone is not
-  enough — both coexist fine in the SDK Manager).
-
-The base is proven end to end. Anything that breaks from here is something *we* added.
+**Ready-to-use capabilities already in teamcode** (all Tier 2, hot-reloadable):
+- **TeleOp**: field-centric mecanum drive, deadzone, LEFT_BUMPER slow mode, loop-time readout
+- **Autonomous**: Driver-Hub pre-match menu (alliance / start pose / field / delay), command-tree
+  scheduling, command lifecycle logging (gated behind `verboseTelemetry`), snapshot persistence
+- **Path following**: `FollowPathCommand` wraps Pedro so autos compose as command trees
+- **Health telemetry**: `DiagnosticsCenter.reportProblem(code, data)` from any subsystem drains to
+  Driver Hub each loop
+- **Per-field pose deltas**: `FieldTweaks.lookup(isRed, field)` returns the live-tunable pose
+  offsets selected via the menu
+- **HeadingCorrector**: opt-in PIDF heading hold (disabled by default; enable via
+  `TuningConfig.headingCorrectionEnabled`)
+- **Servos**: `ServoUtil.degreesToPositionClamped(deg, min, max, range)` — soft limits + degrees API
+- **Small utilities ready as needed**: `JoystickCurve`, `SlewRateLimiter`, `Profiler`,
+  `StaleWatcher`, `AsymmetricMotionProfile`
 
 ---
 
@@ -33,107 +45,98 @@ Verified via `./gradlew :TeamCode:dependencies` and by reading `TeamCode/build.g
 
 | Component | Version | Notes |
 |---|---|---|
-| FTC SDK | **11.1.0** | |
+| FTC SDK | **11.1.0** | (see 11.2 hold in Landmines) |
 | `org.solverslib:core` | **0.3.4** | command framework (FTCLib fork) |
 | `org.solverslib:pedroPathing` | **0.3.4** | glue only — does NOT bundle Pedro |
-| `com.pedropathing:ftc` | **2.0.6** | **our own declared line — we own this version** |
+| `com.pedropathing:ftc` | **2.1.2** | our own declared line — we own this version |
 | `com.pedropathing:telemetry` | 1.0.0 | |
-| `com.bylazar:fullpanels` | **1.0.12** | full Panels bundle (see below) |
-| `com.acmerobotics.dashboard` | 0.5.1 | ⚠️ **conflicts with Sloth** — see Landmines |
+| `com.bylazar:fullpanels` | **1.0.12** | full Panels bundle (field/graphs/configurables/capture/etc.) |
+| `dev.frozenmilk:Load` | **0.2.4** | Sloth Load Gradle plugin — root buildscript classpath |
+| `dev.frozenmilk.sinister:Sloth` | **0.2.4** | Sloth hot-reload runtime |
+| `com.acmerobotics.slothboard:dashboard` | **0.2.4+0.5.1** | Sloth's fork of FTC Dashboard (resolves the conflict — same API) |
+| `junit` | 4.13.2 | `testImplementation` only, does not affect APK |
 
-**Panels is already fully installed** — `fullpanels` pulls `field` (field view), `graph` (live
-graphs), `configurables` (§6 Tier-1 live tuning), `capture` (match replay), `limelightproxy`,
-`battery`, `gamepad`, `camerastream`, `themes`, `lights`, `pinger`. Every dashboard capability the
-charter asks for (§8) is already here. **Nothing to add for Panels.**
-
-**Repositories already in `TeamCode/build.gradle`:**
+**Repositories in `TeamCode/build.gradle`:**
 `maven.brott.dev` · `mymaven.bylazar.com/releases` · `repo.dairy.foundation/releases` ·
 `repo.dairy.foundation/snapshots`
 
-→ **Both Dairy Foundation repos are already present, so Sloth needs no new repository.**
+---
 
-**Already configured** (in `FtcRobotController/build.gradle`): `minSdkVersion 24`, Java 8
-`compileOptions`, `compileSdk 34` — all of which SolversLib requires. Nothing to change.
+## Next action
+
+Two proofs remain before Phase 0 is fully verified. Both need the robot in front of you.
+
+1. **On-robot: prove snapshot writes** — run any OpMode, pull `snacktime_snapshot.json` off the
+   hub (ADB or the hub's Manage page), confirm the `gitHash` field is a real commit hash like
+   `bb096bb`, not `"unknown"`.
+2. **On-robot: prove Pedro follows a path** — with the Pinpoint physically wired in and
+   `pedroPathing/Constants.java` → `PinpointConstants` filled in with real pod offsets, run the
+   Pedro tuning OpModes. A version mismatch (Pedro 2.1.2 ↔ SolversLib 0.3.4) surfaces at
+   **runtime, not build** — "it compiled" proves nothing here.
+
+**Pre-season opportunity:** order Pollen from AndyMark and build the goBILDA StarterBot Base so
+Phase 0 can prove itself against real game pieces before the September 12, 2026 kickoff.
 
 ---
 
-## What's LEFT to do
+## Recent significant additions (2026-07-17)
 
-Per `CLAUDE.md` §6, **every one of these is a dependency change: WARN AND CONFIRM with a human
-before doing it, one library at a time, build after each.**
-
-1. **Sloth** (sub-second hot reload) — the only real work left.
-   - Repos already present. Needs the `buildscript` classpath + the plugin applied.
-   - ⚠️ See the Dashboard landmine below. Handle deliberately, not by trial and error.
-   - Docs: `github.com/Dairy-Foundation/Sloth`
-
-2. **`buildConfig` git hash** — so `hardware/BuildInfo.java` works (§7 traceability).
-   - It reads `org.firstinspires.ftc.teamcode.BuildConfig` → needs `GIT_HASH` + `BUILD_TIME`
-     `buildConfigField`s on the **TeamCode** module.
-   - **A working example already exists in this repo:** `FtcRobotController/build.gradle` does
-     exactly this with `APP_BUILD_TIME`. Copy that pattern — but note it's a *different module*
-     (namespace `com.qualcomm.ftcrobotcontroller`), so it doesn't help TeamCode directly.
-   - **OPEN QUESTION — check this first:** does `build.common.gradle` (project root) already set
-     `buildConfig = true` for the TeamCode module? `cat build.common.gradle`. If yes, we only add
-     the two fields. If no, enable it too.
-
-3. **JUnit** — `testImplementation "junit:junit:4.13.2"` so `./gradlew :TeamCode:test` runs the
-   off-robot `IntakeLogicTest` (§9).
-
-4. **Copy in the skeleton** — the `teamcode` packages from `snacktime-robot-skeleton.zip` into
-   `TeamCode/src/main/java/org/firstinspires/ftc/teamcode/`, and the test into
-   `TeamCode/src/test/java/...`. Then the docs (`CLAUDE.md`, `WORKFLOW.md`, `SETUP.md`,
-   `CHANGELOG.md`, this file) at the **project root**.
-
-5. **Optional — `photon`** — already sitting commented out in `TeamCode/build.gradle`, one
-   uncomment away. Photon is a loop-time optimization library, directly relevant to the prime
-   directive (§0). **Measure Loop Hz before and after** rather than assuming it helps.
+- **11 patterns ported from FTC 5327's decode-2025** — details in the CHANGELOG's 2026-07-17
+  entry. Fills concrete gaps: auto command trees, Driver-Hub alliance selection, health telemetry,
+  per-field pose deltas, PIDF heading hold, plus small utilities. Explicit *skips* also documented
+  (SalineSubsystem, WActuatorGroup, DataBus, custom I2C bridges, etc.) so we don't accidentally
+  revisit them.
+- **CLAUDE.md §1 Explain-It Gate relaxed.** Bar is now "real understanding, not surface
+  simplicity." Sophisticated code (HashMaps, atomics, generics, small state machines) is welcome
+  when it earns its keep. If a student doesn't understand something they're reviewing, the answer
+  is to ask the AI to explain it, not to strip it out. AI's job now explicitly includes teaching.
+- **Drive deadzone** added — `driveDeadzone = 0.05` in `TuningConfig`, applied in `TeleOpExample`
+  via `applyDeadzone(...)`.
+- **ServoUtil** added — degrees ↔ position with soft-limit clamping (`§5` compliant).
+- **Verified:** SolversLib 0.3.4 already ships `com.seattlesolvers.solverslib.command.DeferredCommand`.
+  Do NOT port a duplicate — use the SolversLib one directly.
 
 ---
 
-## Decisions already made
+## Decisions still standing
 
-- **Pedro stays at 2.0.6 for now.** Policy is "always latest" (§2), and 2.1.2 exists. But 2.0.6 is
-  what Seattle Solvers actually tested SolversLib 0.3.4 against, and "we must succeed" argues
-  against making an unvalidated jump the opening move. **Bump to 2.1.2 as ONE isolated change after
-  the stack is proven**, using Phase 0's path-following test as the proof. It is a one-line edit in
-  `TeamCode/build.gradle` and trivially revertable — the cost is low, so the only reason to wait is
-  to keep one variable at a time.
-
-- **Java + SolversLib, not Kotlin + NextFTC.** Reasoning in `CLAUDE.md` §2. The short version: this
-  Quickstart's `TeamCode/build.gradle` proves the point — Pedro is declared on its own line,
-  separate from `pedroPathing`. We own the version outright. NextFTC's extension dragged Pedro in
-  transitively at a pinned old version.
+- **Pedro at 2.1.2.** Bumped 2.0.6 → 2.1.2 on 2026-07-15 (predictive braking, `isRobotStuck` fixes).
+  Compatibility matrix says SolversLib 0.3.3+ supports Pedro 2.0.0 and higher; on-robot path-follow
+  proof is what confirms the pair actually works.
+- **Java + SolversLib, not Kotlin + NextFTC.** Charter §2 covers reasoning; short version: NextFTC
+  drags Pedro in transitively at a pinned old version, SolversLib doesn't.
+- **Pinpoint is the single source of pose. No sensor fusion.** Charter §3. Limelight is for
+  aiming (relative), not pose (global).
+- **Bulk reads MANUAL mode.** `bulkReads.clear()` is the first line of every loop. `util/BulkReads`
+  owns this.
+- **All tunables live in `TuningConfig` as `@Configurable` statics.** Live-editable from Panels;
+  once a value is dialed in, promote it back to source (§6 "Promote good values back to source").
 
 ---
 
 ## Landmines & notes
 
-- **FTC Dashboard vs Sloth — CONFIRMED BLOCKING, not just a risk.** `implementation
-  "com.acmerobotics.dashboard:dashboard:0.5.1"` sits in `TeamCode/build.gradle`. Sloth ships its
-  **own modified fork** of FTC Dashboard, and its docs warn that a library pulling dashboard via
-  `implementation`/`api` needs excluding. As of 2026-07-16 this is confirmed to actually be causing
-  a problem ("Sloth load needs to be fixed") — **this is the top priority in "What's LEFT."** Read
-  Sloth's current docs for the exclude/compileOnly fix rather than guessing at it.- **Logcat — DROPPED.** Not worth fixing. RC persistent match logs (pulled via ADB or the hub's
-  Manage page after a run) cover post-match event review. Panels covers live bench monitoring.
-  Logcat in Android Studio would only add "see a crash stack trace in real time rather than pulling
-  it from the hub after" — a minor convenience, not a blocker. Use `RobotLog` for all event logging;
-  it feeds both Logcat and the RC persistent logs simultaneously.
+- **FTC Dashboard vs Sloth — RESOLVED.** We're on `com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1`
+  (Sloth's fork) instead of stock `com.acmerobotics.dashboard`. Same API, no source changes, hot
+  reload works. If anyone re-adds the stock dashboard, it will break Sloth again.
 
-- **FTC SDK 11.2 — HOLD until Sloth Load is released with Gradle 9.1 support.**
-  11.2 bumps Gradle 8.9 → 9.1 and AGP 8.7.0 → 8.13.2. Sloth's Load plugin 0.2.4 breaks under
-  Gradle 9.1 — the fix is merged (PR #10, May 7, 2026) but not yet released. Upgrading now would
-  lose Sloth hot-reload with no workaround. Watch the Dairy Foundation repo for Load 0.2.5+, then
-  do the upgrade as one coordinated change: Gradle wrapper, AGP classpath, and all 9 SDK deps
-  (11.1.0 → 11.2.0) in the same build. Revisit September 2026.
+- **FTC SDK 11.2 — HOLD until Sloth Load supports Gradle 9.1.** 11.2 bumps Gradle 8.9 → 9.1 and
+  AGP 8.7.0 → 8.13.2. Sloth's Load plugin 0.2.4 breaks under Gradle 9.1 — the fix is merged
+  (PR #10, May 7, 2026) but not yet released. Upgrading now would lose Sloth hot-reload with no
+  workaround. Watch the Dairy Foundation repo for Load 0.2.5+, then do the upgrade as one
+  coordinated change: Gradle wrapper, AGP classpath, and all 9 SDK deps (11.1.0 → 11.2.0) in the
+  same build. **Revisit September 2026.**
 
-- **No dependency locking.** There are no lockfiles. The `{strictly X}` markers all over the
-  dependency report are **Android Gradle Plugin variant-alignment constraints** — generated *from*
-  resolution to keep compile and runtime classpaths aligned, not imposed *on* it. The report's own
-  legend says so: `(c) - A dependency constraint, not a dependency`. **They do not block a version
-  bump.** Change the Pedro line and AGP regenerates the constraint to match.
+- **Panels `@Configurable` on nested objects — UNTESTED.** `FieldTweaks` holds 6 static
+  `AutonFieldTweaks` instances, each with `xOffsetInches`/`yOffsetInches`/`headingOffsetDeg`
+  fields. If Panels doesn't recurse into the nested objects, we'll flatten to 18 individual
+  `public static double` fields. Verify at first bench session.
 
-- **SolversLib has AI-readable docs.** `https://docs.seattlesolvers.com/llms.txt` for the index, and
+- **No dependency locking.** The `{strictly X}` markers in the dependency report are Android
+  Gradle Plugin variant-alignment constraints, not lockfile pins — the report's own legend says
+  `(c) - A dependency constraint, not a dependency`. They do not block a version bump.
+
+- **SolversLib has AI-readable docs.** `https://docs.seattlesolvers.com/llms.txt` for the index;
   appending `.md` to any docs page returns markdown. Use these rather than guessing at API names.
 
 - **SolversLib ↔ Pedro compatibility matrix** (re-check, it moves): 0.3.3+ → Pedro 2.0.0 *and
@@ -141,63 +144,49 @@ before doing it, one library at a time, build after each.**
 
 - **FTCLib and SolversLib cannot coexist.** Their docs are explicit. Never add FTCLib.
 
-- **API verification.** The skeleton follows SolversLib's documented patterns but the exact class
-  names should be confirmed against the javadocs:
-  `repo.dairy.foundation/javadoc/releases/org/solverslib/core/latest`. The *structure* is stable;
-  the signatures may need adjusting.
+- **SolversLib 0.3.4 already ships `DeferredCommand`** (verified in the core sources jar). Don't
+  port a duplicate; use `com.seattlesolvers.solverslib.command.DeferredCommand`.
+
+- **Logcat — DROPPED.** RC persistent match logs (pulled via ADB or the hub's Manage page) cover
+  post-match review; Panels covers live bench monitoring. Use `RobotLog` for all event logging —
+  feeds Logcat + RC logs simultaneously.
 
 ---
 
 ## Confirmed hardware (from Aaron, 2026-07-16)
 
-- **REV Servo Hub** is on the robot. Add to the config sheet alongside the Control/Expansion Hub.
-  Note from the FTC SDK changelog: both the Robot Controller and Driver Station apps must be on
-  **10.0+** for a Servo Hub to configure as a Servo Hub rather than show up as a generic Expansion
-  Hub — worth a version check during Robot Controller configuration. Firmware/address changes need
-  the REV Hardware Client.
-- **Pinpoint 2.0** (goBILDA) confirmed as the localization source — matches the standing decision in
-  `CLAUDE.md` §3 (single source of pose, no fusion). Two mounting facts from Pedro's own docs, worth
-  having on hand during wiring: it must go on an **I2C port other than port 0** (the Control Hub's
-  built-in IMU owns port 0), sticker/port side up, forward pod → X port, strafe pod → Y port. These
-  belong in `pedroPathing/Constants.java`'s `PinpointConstants` once the robot is built.
+- **REV Servo Hub** on the robot. Add to the RC configuration alongside the Control/Expansion Hub.
+  Both Robot Controller and Driver Station apps must be on **10.0+** or the Servo Hub configures as
+  a generic Expansion Hub. Firmware/address changes via REV Hardware Client.
+- **Pinpoint V2** (goBILDA) — the single source of pose (§3). Mount facts (from Pedro's own docs):
+  I2C port **other than 0** (Control Hub's built-in IMU owns port 0), sticker/port side up, forward
+  pod → X port, strafe pod → Y port. Pod offsets belong in `pedroPathing/Constants.java` →
+  `PinpointConstants`.
+- **Drivetrain motors** — wired into `Drivetrain.java` with real RC-config names: `LF_Motor`,
+  `LR_Motor`, `RF_Motor`, `RR_Motor` (ports 0-3). `pedroPathing/Constants.java` uses these too.
 
 ---
 
-## File inventory (as of the last handoff)
+## File inventory (as of 2026-07-17)
 
-`find TeamCode -name '*.java' -path '*teamcode*'` should show **18** files: our 13, plus 5 the
-SolversLib Quickstart ships on its own —
+`find TeamCode/src/main/java -name '*.java' -path '*teamcode*' | wc -l` → **~30 files** across:
 
-- **`pedroPathing/Constants.java`, `Tuning.java`** — Pedro's real configuration (drivetrain geometry,
-  PIDF gains, localizer setup) and its tuning OpModes. **Keep — this is where Pinpoint gets wired in
-  for real**, not sample clutter.
-- **`samples/PedroCommands.java`, `PedroAutoSample.java`, `PedroTeleOpSample.java`** — genuine
-  reference examples showing the SolversLib-wraps-Pedro command pattern in real code. Worth reading
-  once alongside our `AutonomousExample.java` for exact class/method names where our skeleton has
-  TODOs. Safe to delete later to declutter the Driver Hub OpMode list; `pedroPathing/` files must stay.
+- `opmodes/` — `AutonomousExample`, `TeleOpExample`, `AutonMenu`
+- `subsystems/` — `Drivetrain`, `GameMechanism` (template)
+- `commands/` — `FollowPathCommand`
+- `diagnostics/` — `DiagnosticsCenter`, `Problem`, `ProblemSeverity`
+- `config/` — `TuningConfig`, `AutonFieldTweaks`, `FieldTweaks`
+- `hardware/` — `BuildInfo` (generated `GIT_HASH` + `BUILD_TIME`)
+- `util/` — `BulkReads`, `LoopTimer`, `Persistence`, `Datalogger`, `ServoUtil`, `HeadingCorrector`,
+  `JoystickCurve`, `Profiler`, `SlewRateLimiter`, `StaleWatcher`, `TelemetryMenu`
+- `util/profile/` — `AsymmetricMotionProfile`, `ProfileConstraints`, `ProfileState`
+- `pedroPathing/` — `Constants`, `Tuning` (from Quickstart; edited by us — `Pinpoint` wired in)
+- `samples/` — `PedroCommands`, `PedroAutoSample`, `PedroTeleOpSample` (from Quickstart; safe to
+  delete once real code exists — they only clutter the Driver Hub OpMode list)
 
-If the count isn't 18, something's stale — re-check against the current
-`snacktime-robot-skeleton.zip` before proceeding.
-
----
-
-## Next action
-
-**"What's LEFT to do" items 1–3 are DONE** (code-side, 2026-07-15):
-- Sloth 0.2.4 installed (`a52654c`) — **on-robot hot-reload PROVEN 2026-07-17** (sub-second load on the hub).
-- `GIT_HASH` + `BUILD_TIME` in TeamCode `BuildConfig` (`42696d9`) — verified in generated source.
-- JUnit 4.13.2 added (`bd80d2f`) — `./gradlew :TeamCode:test` runs 4 tests, 0 failures.
-- Logcat dropped as a task — RC persistent match logs + Panels cover the use cases; no fix needed.
-
-Remaining before Phase 0 is proven:
-
-1. **Commit the skeleton + docs** (STATUS.md #4) — `CLAUDE.md`, `STATUS.md`, `WORKFLOW.md`,
-   `SETUP.md`, `CHANGELOG.md`, `build.gradle.additions`, and all untracked `teamcode/` Java files
-   are still untracked. Commit them when ready to make the skeleton the baseline.
-2. **On-robot: prove snapshot writes** — run any OpMode, pull `snacktime_snapshot.json` off the
-   hub, confirm `gitHash` field is a real commit hash (not `"unknown"`).
-3. **On-robot: prove Pedro follows a path** — a version mismatch appears at runtime, not at build.
-   "It compiled" proves nothing. Run the Pedro tuning OpModes with the Pinpoint wired in.
+**Off-robot tests** in `TeamCode/src/test/java/.../logic/`:
+`JoystickCurveTest`, `SlewRateLimiterTest`, `StaleWatcherTest`, `AsymmetricMotionProfileTest`,
+`ServoUtilTest`. All green under `./gradlew :TeamCode:test`.
 
 ---
 
@@ -221,6 +210,8 @@ no extra dependency needed. What needs doing:
   (mm from robot center) and encoder directions. These values come from your physical mounting.
 - Add the config name to `CLAUDE.md §10` hardware map once locked in.
 
+---
+
 ## Pre-season opportunity (BIOBUZZ)
 
 Kickoff is **September 12, 2026**, but the Game Preview is already out:
@@ -231,3 +222,31 @@ Kickoff is **September 12, 2026**, but the Game Preview is already out:
 
 → Phase 0 doesn't have to be abstract. Order Pollen, build the goBILDA StarterBot Base, and prove
 the whole loop against *real game pieces* months before anyone has a field.
+
+---
+
+## Scheduled reminders
+
+Managed via `claude.ai/code/routines`:
+
+- **2026-10-05 09:00 EDT (13:00 UTC)** — one-shot: try squared joystick input curve during driving
+  practice. If drivers disagree on preferred style, implement the driver-selectable init-phase
+  curve option. Routine ID: `trig_015KmZfTx11ZwZRzAuyrBBRs`. (Note: the joystick curve utility
+  `util/JoystickCurve.java` is already ported and ready to swap into `TeleOpExample.applyDeadzone`.)
+
+---
+
+## Handoff notes for the next session
+
+- **Aaron (coach)** directs at the intent level and does not read code line-by-line. Talk to him
+  in plain-language behavior terms.
+- **Kieran & Elijah (students)** are the code-level directors. Per the relaxed Explain-It Gate,
+  they can handle sophisticated patterns — but when they don't understand something, teach them,
+  don't strip it out.
+- **Recent commits** worth being aware of:
+  - `bb096bb` — 11 patterns ported from decode-2025; Explain-It Gate relaxed
+  - `1cb8f1f` — drive deadzone; fixed stray `do` token in build.gradle; Sloth marked proven
+  - `e4fe17a` — Sloth Load first working
+  - `ede6404` — field-centric TeleOp; intake skeleton replaced with `GameMechanism` template
+- **git is on `master`, tracking `origin/master`, clean.** All commits pushed as of handoff.
+- **Do not commit unless asked.** Aaron controls when commits happen.
