@@ -19,6 +19,9 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, seventh pass)
+- **Deadzone moved from Drivetrain into JoystickCurve.** The deadzone is an input-shaping concern, not a drivetrain concern, so it belongs alongside the other joystick curve parameters. JoystickCurve is now @Configurable with all four params as live-tunable statics (deadzone, minOutput, transitionPoint, transitionOutput). Registered in Persistence. (`util/JoystickCurve.java`, `subsystems/Drivetrain.java`, `util/Persistence.java`, `opmodes/TeleOpExample.java`)
+
 ## 2026-07-18 (continued, sixth pass)
 - **Drivetrain tunables moved from TuningConfig into Drivetrain.java.** Speed caps, deadzone, and all heading-correction PIDF values are now public static fields at the top of the Drivetrain subsystem file, grouped under "Drivetrain" in Panels. TuningConfig now holds only the three cross-cutting flags (verboseTelemetry, diagnosticsProblemExpireSeconds, profilerEnabled). Persistence updated to scan both classes. References in TeleOpExample and HeadingCorrector updated to point to Drivetrain. (`subsystems/Drivetrain.java`, `config/TuningConfig.java`, `util/Persistence.java`, `util/HeadingCorrector.java`, `opmodes/TeleOpExample.java`)
 

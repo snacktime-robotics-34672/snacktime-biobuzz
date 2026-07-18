@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
+import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
 import org.firstinspires.ftc.teamcode.util.LoopTimer;
 import org.firstinspires.ftc.teamcode.util.Persistence;
@@ -60,7 +61,7 @@ public class TeleOpExample extends CommandOpMode {
         // Field-centric: Pedro rotates strafe/forward by the Pinpoint heading before applying power.
         // Sign convention from PedroTeleOpSample: (-leftY, -leftX, -rightX).
         // TODO: if a direction is backwards on the robot, flip that sign.
-        double dz = Drivetrain.driveDeadzone;
+        double dz = JoystickCurve.deadzone;
         double forward = applyDeadzone(-driver.getLeftY(), dz);
         double strafe  = applyDeadzone(-driver.getLeftX(), dz);
         double turn    = applyDeadzone(-driver.getRightX(), dz);

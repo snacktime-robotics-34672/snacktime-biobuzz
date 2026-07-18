@@ -23,7 +23,6 @@ public class Drivetrain extends SubsystemBase {
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
     public static double driveSpeedCap    = 1.0;   // 0..1, teleop full-speed multiplier
     public static double driveSlowModeCap = 0.35;  // 0..1, precision mode multiplier
-    public static double driveDeadzone    = 0.05;  // stick inputs below this are zeroed
 
     // Heading-hold PIDF for TeleOp — resists drift when driver isn't turning.
     // TUNE ORDER: enable, raise headingP until it resists; add headingD if it oscillates; leave headingI at 0.

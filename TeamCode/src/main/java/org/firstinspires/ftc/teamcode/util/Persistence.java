@@ -14,6 +14,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
+import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
 
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -64,7 +65,8 @@ public final class Persistence {
     // Keys in the JSON are namespaced "ClassName.fieldName" to avoid collisions.
     private static final List<Class<?>> TUNING_CLASSES = Arrays.asList(
             TuningConfig.class,
-            Drivetrain.class
+            Drivetrain.class,
+            JoystickCurve.class
             // KICKOFF: add each new @Configurable subsystem class here, e.g. GameMechanism.class.
     );
 

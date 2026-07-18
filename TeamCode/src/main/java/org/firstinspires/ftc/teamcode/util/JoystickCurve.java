@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.util;
 
+import com.bylazar.configurables.annotations.Configurable;
+
 /**
  * JoystickCurve — pure math for shaping raw stick input into driver-friendly output.
  *
@@ -19,7 +21,14 @@ package org.firstinspires.ftc.teamcode.util;
  * 135-159). The pure static function is the whole extraction — we don't need their gamepad wrapper
  * because SolversLib's GamepadEx already gives us button bindings.
  */
+@Configurable
 public class JoystickCurve {
+
+    // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
+    public static double deadzone         = 0.05; // stick magnitude below this is exactly zero
+    public static double minOutput        = 0.0;  // output just past the deadzone
+    public static double transitionPoint  = 0.5;  // fraction where linear gives way to exponential
+    public static double transitionOutput = 0.35; // output at the transition point
 
     /**
      * Applies the deadzone + linear-then-exponential curve to a raw stick value.
