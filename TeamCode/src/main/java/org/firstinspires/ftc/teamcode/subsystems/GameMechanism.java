@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystems;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
@@ -17,11 +18,18 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
  *     and Auto can compose it into a command tree.
  *   - periodic() publishes health telemetry gated on verboseTelemetry (CLAUDE.md §4 rule 8).
  *   - Extract any math into a pure function in logic/ so it can be unit-tested off-robot (§9).
- *   - Every tunable number belongs in TuningConfig, not hardcoded here (§6 Tier 1).
+ *   - Mechanism-specific tunables are public static fields RIGHT HERE in this file (§6 Tier 1),
+ *     not in TuningConfig. @Configurable on the class makes Panels show them under "GameMechanism".
+ *     Add this class to TUNING_CLASSES in Persistence.java so values survive hub restarts.
  *
  * Add config names to CLAUDE.md §10 hardware map once locked in.
  */
+@Configurable
 public class GameMechanism extends SubsystemBase {
+
+    // TODO: add public static tunable fields here, e.g.:
+    // public static double intakePower = 0.8;
+    // public static double ejectPower  = -0.6;
 
     // TODO: declare hardware objects
     // e.g. private final MotorEx motor;

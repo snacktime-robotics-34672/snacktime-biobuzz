@@ -19,6 +19,9 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, fifth pass)
+- **Mechanism tunables now live in the subsystem file, not TuningConfig.** Each `@Configurable` subsystem class holds its own `public static` fields so Panels groups them by mechanism name. `Persistence` now scans a `TUNING_CLASSES` registry (namespaced `ClassName.fieldName` keys) instead of only `TuningConfig`, so all registered mechanism values are included in session persistence. `GameMechanism.java` updated as the template. CLAUDE.md §6 and TuningConfig updated so the rule is documented for kickoff. (`util/Persistence.java`, `subsystems/GameMechanism.java`, `config/TuningConfig.java`, `CLAUDE.md`)
+
 ## 2026-07-18 (continued, fourth pass)
 - **Pedro localization fully set up on-robot.** Robot mass set to 6.5 kg. Pod offsets measured via OffsetsTuner (forwardPodY=6.735 in, strafePodX=0.287 in) and entered into PinpointConstants. OffsetsTuner added to Tuning menu. Field visualization wired up in Panels: robot shown as red circle with heading line, pose history in green, telemetry formatted to 3 decimal places with heading in degrees. (`pedroPathing/Constants.java`, `pedroPathing/Tuning.java`)
 

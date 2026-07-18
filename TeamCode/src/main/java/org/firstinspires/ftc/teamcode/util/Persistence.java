@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -55,6 +56,15 @@ public final class Persistence {
     private static final String SNAPSHOT_FILE = "snacktime_snapshot.json";
     private static final String TUNING_FILE   = "current_tuning.json";
     private static final String TAG           = "Persistence";
+
+    // All @Configurable classes whose public static fields are included in session persistence.
+    // TuningConfig holds cross-cutting/drivetrain values; each mechanism subsystem holds its own.
+    // KICKOFF: add each new @Configurable subsystem class here, e.g. GameMechanism.class.
+    // Keys in the JSON are namespaced "ClassName.fieldName" to avoid collisions.
+    private static final List<Class<?>> TUNING_CLASSES = Arrays.asList(
+            TuningConfig.class
+            // e.g., GameMechanism.class
+    );
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -149,15 +159,18 @@ public final class Persistence {
             if (values == null || values.isEmpty()) return false;
 
             int applied = 0;
-            for (Field f : TuningConfig.class.getDeclaredFields()) {
-                int mods = f.getModifiers();
-                if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
-                Object val = values.get(f.getName());
-                if (val == null) continue;
-                try {
-                    applyToField(f, val);
-                    applied++;
-                } catch (Exception ignored) { }
+            for (Class<?> cls : TUNING_CLASSES) {
+                String prefix = cls.getSimpleName() + ".";
+                for (Field f : cls.getDeclaredFields()) {
+                    int mods = f.getModifiers();
+                    if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
+                    Object val = values.get(prefix + f.getName());
+                    if (val == null) continue;
+                    try {
+                        applyToField(f, val);
+                        applied++;
+                    } catch (Exception ignored) { }
+                }
             }
 
             String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
@@ -200,10 +213,13 @@ public final class Persistence {
 
     private static void captureTuningInto(Map<String, Object> map) {
         map.clear();
-        for (Field f : TuningConfig.class.getDeclaredFields()) {
-            int mods = f.getModifiers();
-            if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
-            try { map.put(f.getName(), f.get(null)); } catch (Exception ignored) { }
+        for (Class<?> cls : TUNING_CLASSES) {
+            for (Field f : cls.getDeclaredFields()) {
+                int mods = f.getModifiers();
+                if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
+                try { map.put(cls.getSimpleName() + "." + f.getName(), f.get(null)); }
+                catch (Exception ignored) { }
+            }
         }
     }
 

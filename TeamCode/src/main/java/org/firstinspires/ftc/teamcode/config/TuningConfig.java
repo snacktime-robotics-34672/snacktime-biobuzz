@@ -37,8 +37,11 @@ public class TuningConfig {
     public static double headingD = 500;
     public static double headingF = 0;
 
-    // ---- Game mechanism tunables go here at kickoff --------------------------------
-    // Follow the drivetrain pattern above: public static double, non-final, with units.
+    // ---- Game mechanism tunables do NOT go here — they go in their own subsystem file ----
+    // Each mechanism subsystem has @Configurable on the class and public static fields for its
+    // own tunables. Panels groups them by class name, so "Lift.targetHeightInches" appears under
+    // "Lift", not buried in this file. Add each subsystem class to TUNING_CLASSES in
+    // Persistence.java so its values are included in session persistence.
 
     // ---- Telemetry ----------------------------------------------------------------
     // Verbose subsystem telemetry is a BENCH tool. Leave OFF for matches so the loop allocates no

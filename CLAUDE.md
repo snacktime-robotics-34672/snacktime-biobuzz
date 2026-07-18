@@ -207,6 +207,13 @@ Any *value* you might tune is a configurable field, changed from the dashboard i
 - **Rule:** if it is a number you might adjust at a competition, it **must** be a configurable —
   never a hardcoded literal. Examples: PID/PIDF gains, feedforward constants, mechanism powers,
   target poses, speed caps, command timeouts, sensor thresholds.
+- **Where tunables live:** cross-cutting and drivetrain values go in `TuningConfig`. Mechanism-
+  specific tunables go as `public static` fields **in the mechanism's own subsystem file**, with
+  `@Configurable` on the class. Panels then groups them under the mechanism name (e.g. all `Lift`
+  tunables appear under "Lift", not buried in a flat list). **At kickoff, add each new
+  `@Configurable` subsystem class to `TUNING_CLASSES` in `Persistence.java`** — one line — so
+  its values are captured in session persistence (`current_tuning.json`). Keys in that file are
+  namespaced `ClassName.fieldName` so there are never collisions across classes.
 
 ### Tier 2 — Hot reload via Sloth (sub-second)
 Changing *logic* inside the `org.firstinspires.ftc.teamcode` package hot-reloads in under a
