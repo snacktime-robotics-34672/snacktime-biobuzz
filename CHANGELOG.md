@@ -19,6 +19,14 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-19 (continued, step-1 checklist)
+- **Added a loop-time check to Step 1's on-hub checklist.** The identity banner (`RobotIdentity` +
+  `PanelsTelemetry…debug()`) should be loop-time-free by construction (string built once at init, one
+  extra line riding the existing telemetry packet, §4 rule 8) — but that's never actually been
+  measured on-robot: every prior `maxLoopMs` verification predates the banner code (`73a1ecc`). Step 1
+  now calls out glancing at `avgLoopHz`/`maxLoopMs` on that same run's snapshot to confirm the
+  code-level reasoning holds, not just assume it. (`STATUS.md`)
+
 ## 2026-07-19 (continued, handoff prep)
 - **Refreshed `STATUS.md` for session handoff.** "Next action" reordered to Aaron's stated priority:
   (1) confirm hub Wi-Fi identity on-hub, (2) tune the Test Bot's Pedro, (3) confirm the JSON tuning

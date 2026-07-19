@@ -119,6 +119,13 @@ verified yet:
   confirms the exact string `getDeviceName()` returns on a Control Hub (with/without the `-RC`
   suffix) — the one thing we couldn't verify off-robot.
 - Sanity-check fail-closed: an unnamed hub should show `ROBOT: *** UNKNOWN ***` and load no tuning.
+- **Confirm the identity banner didn't cost loop time.** The `idBanner` string is built once at init
+  and the per-loop cost is just one more `PanelsTelemetry…debug()` call riding the existing telemetry
+  packet (§4 rule 8) — so by code it should be free, but this hasn't actually been measured on-robot:
+  all prior `maxLoopMs` verification (1005→300.6→27.0→23.9ms) happened on commits *before*
+  `RobotIdentity`/the banner existed (`73a1ecc`). This run's snapshot is the first with the banner
+  live — glance at `avgLoopHz`/`maxLoopMs`; if still ~145+ Hz / single-digit ms average, that closes
+  the gap between "should be free" and "measured free."
 
 **Step 2 — Tune the Test Bot's Pedro path following.** The `Line` test drifted on its first run
 (expected, untuned). Work through `Tuning` → `Manual`: Translational Tuner, Heading Tuner, Drive
