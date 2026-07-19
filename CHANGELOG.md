@@ -19,6 +19,15 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, seventeenth pass)
+- **Added GitHub Actions CI to run the off-robot unit tests automatically.** New workflow runs
+  `./gradlew :TeamCode:test` (Temurin JDK 21, matching the local dev environment) on every push to
+  `master` and every PR targeting it, so a generated change is verified before it reaches the robot
+  (§9, §14). This is the piece that makes a future "require status checks to pass" branch
+  protection rule actually useful — not a Gradle/library dependency change, so no WARN-AND-CONFIRM
+  (§6) needed; purely CI infrastructure outside the app build.
+  (`.github/workflows/tests.yml`)
+
 ## 2026-07-18 (continued, sixteenth pass)
 - **Coach set the next three-step development plan.** With Phase 0 closed, work moves to: (1)
   PIDF-tune Pedro path following, (2) build Limelight object detection from scratch (nothing exists
