@@ -19,6 +19,13 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, eighteenth pass)
+- **Decided against paying for enforced branch protection on `master`.** The `snacktime-robotics-34672`
+  org is private and on the GitHub Free plan, which doesn't offer required status checks/reviews for
+  private repos (needs GitHub Team, $4/user/month, or a public repo). The CI workflow added
+  yesterday still runs and reports pass/fail either way — just not as a hard merge gate. Relying on
+  team discipline for now, appropriate at this team size. (decision only, no code)
+
 ## 2026-07-18 (continued, seventeenth pass)
 - **Added GitHub Actions CI to run the off-robot unit tests automatically.** New workflow runs
   `./gradlew :TeamCode:test` (Temurin JDK 21, matching the local dev environment) on every push to

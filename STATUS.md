@@ -247,6 +247,13 @@ future work can happen against real game pieces before the September 12, 2026 ki
   logs (`SNAPSHOT:` lines, one per OpMode run, 14-day retention via `LogCleanup`); this file is
   just the fast-path "latest state" pull, same role as `current_tuning.json`. Don't re-raise this
   as an open question — it was considered and closed.
+- **No enforced branch protection on `master` — decided 2026-07-18.** The repo is private, owned by
+  the `snacktime-robotics-34672` GitHub org, which is on the Free plan — required status checks
+  and required reviews aren't available for private repos below GitHub Team ($4/user/month). Chose
+  to skip paying for it: the "Unit Tests" GitHub Actions workflow (`.github/workflows/tests.yml`)
+  still runs and reports pass/fail on every push/PR, it just can't hard-block a merge. Relying on
+  team discipline instead of a UI gate, appropriate for a 2-3 coach/student team. Revisit if the org
+  ever upgrades to Team, or if the repo goes public (which would unlock it for free).
 
 ---
 
