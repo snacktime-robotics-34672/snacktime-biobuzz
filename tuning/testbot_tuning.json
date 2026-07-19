@@ -1,0 +1,19 @@
+{
+  "TuningConfig.diagnosticsProblemExpireSeconds": 10,
+  "TuningConfig.profilerEnabled": false,
+  "TuningConfig.verboseTelemetry": false,
+  "Drivetrain.driveSlowModeCap": 0.35,
+  "Drivetrain.driveSpeedCap": 1.0,
+  "Drivetrain.headingCorrectionEnabled": false,
+  "Drivetrain.headingCorrectionLagMs": 200.0,
+  "Drivetrain.headingCorrectionThresholdMin": 0.05,
+  "Drivetrain.headingD": 500.0,
+  "Drivetrain.headingF": 0.0,
+  "Drivetrain.headingI": 0.0,
+  "Drivetrain.headingNominalVoltage": 12.4,
+  "Drivetrain.headingP": 1.2,
+  "JoystickCurve.deadzone": 0.05,
+  "JoystickCurve.minOutput": 0.0,
+  "JoystickCurve.transitionOutput": 0.35,
+  "JoystickCurve.transitionPoint": 0.5
+}
