@@ -19,6 +19,19 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, tenth pass)
+- **Removed a stray extracted Pedro sources jar from the repo root.** `META-INF/` and
+  `com/pedropathing/...` were loose source files (bare manifest + `ftc` package sources) left over
+  from someone unzipping the `com.pedropathing:ftc:2.1.2` sources jar directly into the repo —
+  never tracked by git, not needed to build (Gradle resolves the real dependency from Maven).
+  Deleted; no build or runtime effect. (repo root)
+- **Refreshed `STATUS.md` to match current repo state.** It had drifted ~10 commits behind:
+  Pinpoint is now shown as physically wired in with measured pod offsets and proven-live
+  localization, the two remaining Phase 0 proofs are now stated precisely (run the `Line`/
+  `Triangle`/`Circle` Pedro path test; pull the snapshot JSON), tunables documentation now reflects
+  the subsystem-file reorg, the file inventory and hardware sections are current, and the stale
+  "uncommitted work" list was replaced with the actual clean-tree state. (STATUS.md)
+
 ## 2026-07-18 (continued, ninth pass)
 - **Automatic hub log cleanup every 14 days.** New `LogCleanup.maybeRun()` runs at every OpMode init but only actually does work when 14+ days have passed since the last cleanup (tracked via a `last_log_cleanup.txt` stamp file). Deletes matchlog .log/.txt files and stray .csv files older than 14 days so hub storage doesn't fill up over a season. Wired into all three OpModes. Age- and extension-guarded; snapshot/tuning JSONs are safe by construction. CLAUDE.md §14 updated. (`util/LogCleanup.java`, `opmodes/TeleOpExample.java`, `opmodes/AutonomousExample.java`, `opmodes/SystemsCheck.java`, `CLAUDE.md`)
 

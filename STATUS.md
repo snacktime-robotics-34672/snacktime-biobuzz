@@ -1,6 +1,7 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-07-18 — Sinister crash fixed; SystemsCheck corrected; full persistence + tuning backup system built.
+**Last updated:** 2026-07-18 — Pinpoint wired in and localization proven live on-robot; tunables
+reorganized into per-subsystem files; hub log auto-cleanup added.
 
 **Read `CLAUDE.md` first** — that's the charter (rules + architecture) and it governs everything.
 This file is only the *current state*: what's verified, what's left, and what to do next. Keep it
@@ -19,27 +20,39 @@ of checking. Verify, don't assume.
 - ✅ **Sloth hot-reload proven on-robot** — sub-second load confirmed 2026-07-17
 - ✅ `GIT_HASH` + `BUILD_TIME` in TeamCode `BuildConfig` (verified in generated source)
 - ✅ JUnit tests run off-robot (`./gradlew :TeamCode:test` — all green)
-- ⏳ **Snapshot writes proof on-robot** (still pending)
-- ⏳ **Pedro follows a path proof on-robot** (still pending — needs Pinpoint mounted + pod offsets)
+- ✅ **Pinpoint wired in; localization proven live on-robot** — pod offsets measured via
+  `OffsetsTuner` (`forwardPodY=6.735`, `strafePodX=0.287`), robot mass set, Panels field view shows
+  live pose + heading + history trail (`LocalizationTest`)
+- ⏳ **Snapshot writes proof on-robot** (still pending) — pull `snacktime_snapshot.json` off the hub
+  or grep `SNAPSHOT:` in the RC log, confirm `gitHash` is a real commit hash, not `"unknown"`
+- ⏳ **Pedro follows a path proof on-robot** (still pending) — localization tracks pose correctly,
+  but no path-follow run is confirmed yet. The `Tuning` menu → `Tests` folder has `Line` /
+  `Triangle` / `Circle` OpModes ready to run against the now-real pod offsets.
 
 **Ready-to-use capabilities already in teamcode** (all Tier 2, hot-reloadable):
-- **TeleOp**: field-centric mecanum drive, deadzone, LEFT_BUMPER slow mode, loop-time readout
+- **TeleOp**: field-centric mecanum drive, deadzone (now in `JoystickCurve`), LEFT_BUMPER slow
+  mode, loop-time readout
 - **Autonomous**: Driver-Hub pre-match menu (alliance / start pose / field / delay), command-tree
   scheduling, command lifecycle logging (gated behind `verboseTelemetry`), snapshot persistence
-- **Path following**: `FollowPathCommand` wraps Pedro so autos compose as command trees
+- **Path following**: `FollowPathCommand` wraps Pedro so autos compose as command trees; Pedro
+  localization live and tracking pose on Panels field view
 - **Health telemetry**: `DiagnosticsCenter.reportProblem(code, data)` from any subsystem drains to
   Driver Hub each loop
 - **Per-field pose deltas**: `FieldTweaks.lookup(isRed, field)` returns the live-tunable pose
   offsets selected via the menu
 - **HeadingCorrector**: opt-in PIDF heading hold (disabled by default; enable via
-  `TuningConfig.headingCorrectionEnabled`)
+  `Drivetrain.headingCorrectionEnabled`)
 - **Servos**: `ServoUtil.degreesToPositionClamped(deg, min, max, range)` — soft limits + degrees API
 - **Tuning backup**: `Persistence.saveTuning()` / `loadAndApplyTuning(telemetry)` — dashboard
-  values saved on every stop, restored on every init; Driver Hub shows `LOADED TUNING FROM FILE`
+  values saved on every stop (now including loop-time stats), restored on every init; Driver Hub
+  shows `LOADED TUNING FROM FILE`. Scans a `TUNING_CLASSES` registry so each `@Configurable`
+  subsystem's own tunables are captured automatically (namespaced `ClassName.fieldName`)
 - **Build manifest**: `build-manifest.json` written at repo root on every build (Gradle task) —
-  hardware names scanned from source automatically, TuningConfig source defaults included
-- **Small utilities ready as needed**: `JoystickCurve`, `SlewRateLimiter`, `Profiler`,
-  `StaleWatcher`, `AsymmetricMotionProfile`
+  hardware names scanned from source automatically, tunable source defaults included
+- **Hub log auto-cleanup**: `LogCleanup.maybeRun()` runs at every OpMode init, deletes matchlogs and
+  stray CSVs older than 14 days so hub storage doesn't fill up over a season
+- **Small utilities ready as needed**: `JoystickCurve` (deadzone + exponential curve, all params
+  tunable), `SlewRateLimiter`, `Profiler`, `StaleWatcher`, `AsymmetricMotionProfile`
 
 ---
 
@@ -72,14 +85,41 @@ Two proofs remain before Phase 0 is fully verified. Both need the robot in front
 
 1. **On-robot: prove snapshot writes** — run any OpMode, pull `snacktime_snapshot.json` off the
    hub (ADB or the hub's Manage page), confirm the `gitHash` field is a real commit hash like
-   `bb096bb`, not `"unknown"`.
-2. **On-robot: prove Pedro follows a path** — with the Pinpoint physically wired in and
-   `pedroPathing/Constants.java` → `PinpointConstants` filled in with real pod offsets, run the
-   Pedro tuning OpModes. A version mismatch (Pedro 2.1.2 ↔ SolversLib 0.3.4) surfaces at
-   **runtime, not build** — "it compiled" proves nothing here.
+   `84cca60`, not `"unknown"`.
+2. **On-robot: prove Pedro follows a path** — Pinpoint is wired in and pod offsets are measured
+   (`forwardPodY=6.735`, `strafePodX=0.287`), and `LocalizationTest` confirms pose tracking works.
+   What's left is running an actual path: open `Tuning` (Pedro Pathing group) → `Tests` folder →
+   `Line` (or `Triangle`/`Circle`) and confirm the Follower drives the commanded path, not just
+   that pose updates. A version mismatch (Pedro 2.1.2 ↔ SolversLib 0.3.4) surfaces at **runtime,
+   not build** — "it compiled" proves nothing here.
 
 **Pre-season opportunity:** order Pollen from AndyMark and build the goBILDA StarterBot Base so
 Phase 0 can prove itself against real game pieces before the September 12, 2026 kickoff.
+
+---
+
+## Recent significant additions (2026-07-18, third session)
+
+- **Pedro localization set up and proven live on-robot.** Robot mass set to 6.5 kg. Pod offsets
+  measured via `OffsetsTuner` (`forwardPodY=6.735` in, `strafePodX=0.287` in) and entered into
+  `PinpointConstants`. Panels field view wired up: robot drawn as a red circle with heading line,
+  pose history in green, telemetry to 3 decimal places with heading in degrees.
+  (`pedroPathing/Constants.java`, `pedroPathing/Tuning.java`)
+- **Tunables reorganized: mechanism values now live in each subsystem file, not `TuningConfig`.**
+  Each `@Configurable` subsystem class holds its own `public static` tunables so Panels groups them
+  by mechanism name. `Drivetrain.java` now owns speed caps, deadzone, and heading-correction PIDF
+  gains directly. `TuningConfig` is down to three cross-cutting flags (`verboseTelemetry`,
+  `diagnosticsProblemExpireSeconds`, `profilerEnabled`). `Persistence` scans a `TUNING_CLASSES`
+  registry (namespaced `ClassName.fieldName` keys) instead of only `TuningConfig`.
+- **Deadzone moved into `JoystickCurve`.** All four curve params (deadzone, minOutput,
+  transitionPoint, transitionOutput) are `@Configurable` statics there now — input-shaping concern,
+  not a drivetrain concern.
+- **Snapshots now record loop-time stats** (`avgLoopHz`, `avgLoopMs`, `maxLoopMs`) via
+  `Snapshot.captureLoop(LoopTimer)`, so loop-time regressions are visible across sessions (§0).
+- **Hub log auto-cleanup added.** `LogCleanup.maybeRun()` runs at every OpMode init but only acts
+  once 14+ days have passed (tracked via a stamp file); deletes matchlog `.log`/`.txt` and stray
+  `.csv` files older than 14 days. Age- and extension-guarded — snapshot/tuning JSONs are safe by
+  construction. Wired into all three OpModes; documented in `CLAUDE.md §14`.
 
 ---
 
@@ -145,8 +185,11 @@ Phase 0 can prove itself against real game pieces before the September 12, 2026 
   aiming (relative), not pose (global).
 - **Bulk reads MANUAL mode.** `bulkReads.clear()` is the first line of every loop. `util/BulkReads`
   owns this.
-- **All tunables live in `TuningConfig` as `@Configurable` statics.** Live-editable from Panels;
-  once a value is dialed in, promote it back to source (§6 "Promote good values back to source").
+- **All tunables are `@Configurable` statics, live in the subsystem that owns them.** Mechanism
+  values live in the mechanism's own subsystem file (e.g. `Drivetrain.java`); only cross-cutting
+  flags stay in `TuningConfig`. Live-editable from Panels; once a value is dialed in, promote it
+  back to source (§6 "Promote good values back to source"). New `@Configurable` classes must be
+  added to `Persistence.TUNING_CLASSES` to be captured in session persistence.
 
 ---
 
@@ -189,34 +232,36 @@ Phase 0 can prove itself against real game pieces before the September 12, 2026 
 
 ---
 
-## Confirmed hardware (from Aaron, 2026-07-16)
+## Confirmed hardware (from Aaron, 2026-07-16; Pinpoint wired + measured 2026-07-18)
 
 - **REV Servo Hub** on the robot. Add to the RC configuration alongside the Control/Expansion Hub.
   Both Robot Controller and Driver Station apps must be on **10.0+** or the Servo Hub configures as
   a generic Expansion Hub. Firmware/address changes via REV Hardware Client.
-- **Pinpoint V2** (goBILDA) — the single source of pose (§3). Mount facts (from Pedro's own docs):
+- **Pinpoint V2** (goBILDA) — the single source of pose (§3). **Physically wired in and pod
+  offsets measured** via `OffsetsTuner` (`forwardPodY=6.735` in, `strafePodX=0.287` in), entered
+  into `pedroPathing/Constants.java` → `PinpointConstants`. Mount facts (from Pedro's own docs):
   I2C port **other than 0** (Control Hub's built-in IMU owns port 0), sticker/port side up, forward
-  pod → X port, strafe pod → Y port. Pod offsets belong in `pedroPathing/Constants.java` →
-  `PinpointConstants`.
+  pod → X port, strafe pod → Y port.
 - **Drivetrain motors** — wired into `Drivetrain.java` with real RC-config names: `LF_Motor`,
   `LR_Motor`, `RF_Motor`, `RR_Motor` (ports 0-3). `pedroPathing/Constants.java` uses these too.
 
 ---
 
-## File inventory (as of 2026-07-17)
+## File inventory (as of 2026-07-18)
 
-`find TeamCode/src/main/java -name '*.java' -path '*teamcode*' | wc -l` → **~30 files** across:
+`find TeamCode/src/main/java -name '*.java' -path '*teamcode*' | wc -l` → **30 files** across:
 
-- `opmodes/` — `AutonomousExample`, `TeleOpExample`, `AutonMenu`
-- `subsystems/` — `Drivetrain`, `GameMechanism` (template)
+- `opmodes/` — `AutonomousExample`, `TeleOpExample`, `AutonMenu`, `SystemsCheck`
+- `subsystems/` — `Drivetrain` (now owns its own tunables), `GameMechanism` (template)
 - `commands/` — `FollowPathCommand`
 - `diagnostics/` — `DiagnosticsCenter`, `Problem`, `ProblemSeverity`
-- `config/` — `TuningConfig`, `AutonFieldTweaks`, `FieldTweaks`
+- `config/` — `TuningConfig` (cross-cutting flags only), `AutonFieldTweaks`, `FieldTweaks`
 - `hardware/` — `BuildInfo` (generated `GIT_HASH` + `BUILD_TIME`)
 - `util/` — `BulkReads`, `LoopTimer`, `Persistence`, `Datalogger`, `ServoUtil`, `HeadingCorrector`,
-  `JoystickCurve`, `Profiler`, `SlewRateLimiter`, `StaleWatcher`, `TelemetryMenu`
+  `JoystickCurve`, `Profiler`, `SlewRateLimiter`, `StaleWatcher`, `TelemetryMenu`, `LogCleanup`
 - `util/profile/` — `AsymmetricMotionProfile`, `ProfileConstraints`, `ProfileState`
-- `pedroPathing/` — `Constants`, `Tuning` (from Quickstart; edited by us — `Pinpoint` wired in)
+- `pedroPathing/` — `Constants` (Pinpoint wired in, real pod offsets), `Tuning` (from Quickstart,
+  includes `OffsetsTuner` and the `Line`/`Triangle`/`Circle` path-follow tests)
 
 **Off-robot tests** in `TeamCode/src/test/java/.../logic/`:
 `JoystickCurveTest`, `SlewRateLimiterTest`, `StaleWatcherTest`, `AsymmetricMotionProfileTest`,
@@ -235,14 +280,13 @@ No code change needed — servos on it are accessed identically to any other ser
 - Set firmware and I2C address via REV Hardware Client if needed.
 - Once config names are set, add them to `CLAUDE.md §10` hardware map.
 
-### Pinpoint V2 (goBILDA Odometry Computer)
-Driver is already in the FTC SDK 11.1.0 (`com.qualcomm.hardware.gobilda.GoBildaPinpointDriver`) —
-no extra dependency needed. What needs doing:
-- Wire it physically: **I2C port other than port 0** (the Control Hub's built-in IMU owns port 0),
-  sticker/port side up, forward pod → X port, strafe pod → Y port.
-- Fill in `pedroPathing/Constants.java` → `PinpointConstants` with the actual pod offsets
-  (mm from robot center) and encoder directions. These values come from your physical mounting.
-- Add the config name to `CLAUDE.md §10` hardware map once locked in.
+### Pinpoint V2 (goBILDA Odometry Computer) — ✅ DONE (2026-07-18)
+Driver is already in the FTC SDK 11.1.0 (`com.qualcomm.hardware.gobilda.GoBildaPinpointDriver`).
+Physically wired in; pod offsets measured via `OffsetsTuner` and entered into
+`pedroPathing/Constants.java` → `PinpointConstants`; `LocalizationTest` confirms live pose tracking
+on the Panels field view. **Remaining:** add the `"pinpoint"` config name to `CLAUDE.md §10`
+hardware map (still a TODO — table doesn't list it yet), and run the actual `Line`/`Triangle`/
+`Circle` path-follow test (see Next Action above — pose tracking ≠ path following proven).
 
 ---
 
@@ -278,13 +322,13 @@ Managed via `claude.ai/code/routines`:
   they can handle sophisticated patterns — but when they don't understand something, teach them,
   don't strip it out.
 - **Recent commits** worth being aware of:
-  - `cec88c5` — STATUS.md refreshed as self-contained handoff doc
+  - `7ef874b` — hub log auto-cleanup (14-day)
+  - `84cca60` — snapshots record loop-time stats
+  - `140d077`–`c0b771a` — tunables reorganized: mechanism values into subsystem files, deadzone
+    into `JoystickCurve`
+  - `d0fec73` — Pedro localization set up and proven live on-robot (offsets, robot mass, field viz)
   - `bb096bb` — 11 patterns ported from decode-2025; Explain-It Gate relaxed
-  - `1cb8f1f` — drive deadzone; fixed stray `do` token in build.gradle; Sloth marked proven
-- **Uncommitted work from 2026-07-18 session** (not yet committed — Aaron controls when):
-  - Sinister crash fix: deleted Pedro quickstart samples
-  - SystemsCheck: corrected motor names, 5→4 motors
-  - Persistence: saveTuning, loadAndApplyTuning, hardware enumeration, RobotLog SNAPSHOT
-  - TeamCode/build.gradle: generateBuildManifest task + Gradle sync needed
-  - .gitignore: build-manifest.json added
+- **Working tree is clean** — everything through `7ef874b` is committed. Two stray untracked
+  directories (`META-INF/`, `com/pedropathing/...` — an accidentally-extracted Pedro sources jar)
+  were found and deleted 2026-07-18; not committed since they were never tracked.
 - **Do not commit unless asked.** Aaron controls when commits happen.
