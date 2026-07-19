@@ -19,6 +19,15 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-19 (continued, save helper auto-detect)
+- **`save-tuning.sh` now auto-detects which robot from the connected hub.** Just run `./save-tuning.sh`
+  (no argument) after tuning — it reads the per-robot snapshot filename the hub writes to tell comp
+  from test, then pulls the right tuning file. Explicit `comp`/`test` still works as an override. This
+  was chosen over "auto-pull on connect," which is the wrong trigger (connect-time grabs last
+  session's stale values, since the hub file is written on OpMode stop) and risks clobbering
+  uncommitted repo edits. Clear errors if the hub is UNKNOWN or hasn't written a snapshot yet.
+  (`save-tuning.sh`, `tuning/README.md`, `WORKFLOW.md`)
+
 ## 2026-07-19 (continued, save helper)
 - **Added `save-tuning.sh` — one command to back up a robot's tuning.** A plain `git commit` doesn't
   save tuning, because the values live on the hub, not the repo, until pulled in. `./save-tuning.sh

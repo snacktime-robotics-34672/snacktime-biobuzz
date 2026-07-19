@@ -18,12 +18,19 @@ into `tuning/` first. Two ways:
 
 **Easy way — the helper script** (`save-tuning.sh` at the repo root, run with the hub connected):
 ```
-./save-tuning.sh comp     # or: ./save-tuning.sh test
+./save-tuning.sh                 # auto-detects comp vs test from the connected hub
 git add tuning/ && git commit -m "Tune comp: <what changed>" && git push
 ```
-The script does the `adb pull` for the right file and shows you what changed. It needs `adb` on your
-PATH (comes with Android Studio) and the robot's hub connected (USB or Wi-Fi adb). Because the script
-is committed to this repo, anyone who clones gets it — no per-machine setup beyond having adb.
+No argument needed — it figures out which robot from the hub itself (it reads the per-robot snapshot
+filename the hub writes). You can still force it with `./save-tuning.sh comp` or `./save-tuning.sh
+test` if you ever need to. The script does the `adb pull` for the right file and shows what changed.
+It needs `adb` on your PATH (comes with Android Studio) and the robot's hub connected (USB or Wi-Fi
+adb). Because the script is committed to this repo, anyone who clones gets it — no per-machine setup
+beyond having adb.
+
+> Run it **after** you've tuned and stopped the OpMode — that's when the hub writes the file.
+> Auto-detect needs the hub to have written a snapshot at least once (any OpMode run does that); if
+> it hasn't, or the hub is still UNKNOWN, the script tells you what to fix.
 
 **Manual way — the same thing by hand:**
 ```
