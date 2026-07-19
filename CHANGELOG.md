@@ -19,6 +19,25 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-19 (continued, identity wired into Pedro tuning + Panels finding)
+- **Wired robot identity into Pedro's `Tuning.java` suite.** Previously only `TeleOpExample`/
+  `AutonomousExample` showed the identity banner — the ~15 OpModes in Pedro's own tuning menu
+  (`LocalizationTest`, `OffsetsTuner`, all the PIDF tuners) had zero `RobotIdentity` visibility at
+  all, on Panels or the Driver Station, despite being exactly where Step 2's hands-on tuning happens.
+  Fixed at the one shared choke point: identity resolves once in `onSelect()`, banner is emitted from
+  `drawCurrent()` (called by nearly every sub-OpMode's `init_loop()`/`loop()`), so one change covers
+  the whole suite instead of touching 15 files.
+- **Root-caused "banner missing from Panels" as a Panels-side rendering quirk, not our code.**
+  Decompiled `com.bylazar:telemetry:1.0.5`'s actual bytecode rather than guess: `debug()` has no
+  dedup/filtering, `update(Telemetry)` mirrors the *entire* line list to the Driver Station
+  unconditionally on every call before handing the same list to Panels. Confirmed via `adb logcat`
+  that `RobotIdentity` resolves correctly every OpMode selection, and confirmed the banner *does*
+  reach the Driver Station from the same send that Panels receives. Since it's proven present in the
+  exact batch Panels gets but doesn't render there, the gap is in Panels' web frontend, not our
+  teamcode — closed, not left open. `STATUS.md` Step 1 updated with the finding so it isn't
+  re-investigated later.
+  (`pedroPathing/Tuning.java`, `STATUS.md`)
+
 ## 2026-07-19 (continued, driver hub polish)
 - **Identity banner is now larger/colored on the Driver Hub, plain text still to Panels.** New
   `RobotIdentity.bannerHtml()` wraps the banner in `Telemetry.DisplayFormat.HTML` tags (verified

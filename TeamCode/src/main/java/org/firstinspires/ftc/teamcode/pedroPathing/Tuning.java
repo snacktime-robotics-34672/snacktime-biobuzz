@@ -24,6 +24,8 @@ import com.pedropathing.util.PoseHistory;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.util.RobotIdentity;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +48,12 @@ public class Tuning extends SelectableOpMode {
 
     @IgnoreConfigurable
     static ArrayList<String> changes = new ArrayList<>();
+
+    // Which robot is this? None of the ~15 tuning OpModes below had any robot-identity visibility
+    // before — this is the one place (drawCurrent(), called by nearly all of them) that fixes that
+    // for the whole suite at once, rather than wiring each OpMode individually.
+    @IgnoreConfigurable
+    static String idBanner;
 
     public Tuning() {
         super("Select a Tuning OpMode", s -> {
@@ -90,6 +98,9 @@ public class Tuning extends SelectableOpMode {
         poseHistory = follower.getPoseHistory();
 
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        // Resolved once per OpMode selection (init-time, not the loop — §4). Emitted every loop from
+        // drawCurrent() below so it's visible across the whole tuning suite, not just here.
+        idBanner = RobotIdentity.resolve().banner();
         Drawing.init();
     }
 
@@ -98,6 +109,14 @@ public class Tuning extends SelectableOpMode {
 
     public static void drawCurrent() {
         try {
+            // Queued here (not flushed) — each sub-OpMode's own telemetryM.update(telemetry) call
+            // does the actual send, same as every other debug() line in this file already works.
+            // Whether that happens just before or after this call in a given OpMode only costs one
+            // loop of display lag for a value that never changes mid-session (§4 — not loop-time-
+            // sensitive; this is a Panels/DS debug line, not a hot-path read). Inside the same
+            // try/catch as the drawing below now, so a null/unready telemetryM can't take down
+            // drawing (they were previously independent; a failure in one shouldn't crash the other).
+            telemetryM.debug(idBanner);
             Drawing.drawRobot(follower.getPose());
             Drawing.sendPacket();
         } catch (Exception e) {

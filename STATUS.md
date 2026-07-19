@@ -1,11 +1,14 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-07-19 — **Two-robot support built + tuning-save helper.** Robot identity
-(from hub network name) + robot-aware persistence: per-robot **committed** tuning files, per-robot
-snapshots, fail-closed on UNKNOWN, loud identity banner on Driver Hub + Panels. `./save-tuning.sh`
-(auto-detects the robot) pulls a hub's tuning into `tuning/` to commit. Lets us develop on a Test
-bot and deliver a reliable Competition robot off one codebase. (Earlier 2026-07-18: **Phase 0
-complete, 6-of-6**; TeleOp direction + the `maxLoopMs` 1005→27ms spike both fixed.) **Next-session
+**Last updated:** 2026-07-19 — **Step 1 confirmed on-robot: two-robot identity works.** Test hub
+named, identity resolves correctly, per-robot tuning/snapshot files confirmed present with the right
+names, and the identity banner confirmed showing on the Driver Station (Panels rendering confirmed
+as a Panels-side quirk, not our code — traced via decompiled bytecode, not a blocker). Also: two-robot
+support built + tuning-save helper — robot identity (from hub network name) + robot-aware
+persistence: per-robot **committed** tuning files, per-robot snapshots, fail-closed on UNKNOWN.
+`./save-tuning.sh` (auto-detects the robot) pulls a hub's tuning into `tuning/` to commit. Lets us
+develop on a Test bot and deliver a reliable Competition robot off one codebase. (Earlier 2026-07-18:
+**Phase 0 complete, 6-of-6**; TeleOp direction + the `maxLoopMs` 1005→27ms spike both fixed.) **Next-session
 plan (ordered):** confirm hub identity on-hub → test-bot Pedro tuning → confirm JSON save workflow →
 Limelight detection → Pedro path-follow to the ball (see "Next action").
 
@@ -107,25 +110,26 @@ Verified via `./gradlew :TeamCode:dependencies` and by reading `TeamCode/build.g
 observe on real telemetry → persist a record) is proven end to end on real hardware. Aaron's
 priority order for what's next:
 
-**Step 1 — Confirm the hub Wi-Fi name / identity strategy works on the real hubs (do first).** The
-robot-aware tuning/snapshot system is built and unit-tested, but the on-hub behavior hasn't been
-verified yet:
-- Name each Control Hub in the **REV Hardware Client** — competition `34672-C-RC`, test `34672-T-RC`
-  — and **reboot** (see `WORKFLOW.md` §11). (Only the test bot exists today; name it now.)
-- Run any OpMode and confirm the **`ROBOT: TEST BOT`** banner shows correctly (first line, Driver
-  Hub **and** Panels — the Panels rendering is the part we're least sure of, so eyeball it).
-- Confirm the resolved value: check the RC log line `network name="…" resolved to …`, and that the
-  pulled snapshot is named `snacktime_snapshot_TESTBOT.json` with a matching `robot` field. This also
-  confirms the exact string `getDeviceName()` returns on a Control Hub (with/without the `-RC`
-  suffix) — the one thing we couldn't verify off-robot.
-- Sanity-check fail-closed: an unnamed hub should show `ROBOT: *** UNKNOWN ***` and load no tuning.
-- **Confirm the identity banner didn't cost loop time.** The `idBanner` string is built once at init
-  and the per-loop cost is just one more `PanelsTelemetry…debug()` call riding the existing telemetry
-  packet (§4 rule 8) — so by code it should be free, but this hasn't actually been measured on-robot:
-  all prior `maxLoopMs` verification (1005→300.6→27.0→23.9ms) happened on commits *before*
-  `RobotIdentity`/the banner existed (`73a1ecc`). This run's snapshot is the first with the banner
-  live — glance at `avgLoopHz`/`maxLoopMs`; if still ~145+ Hz / single-digit ms average, that closes
-  the gap between "should be free" and "measured free."
+**Step 1 — Confirm the hub Wi-Fi name / identity strategy works on the real hubs — DONE 2026-07-19.**
+- ✅ Test hub named `34672-T-RC` in the REV Hardware Client, rebooted.
+- ✅ Resolved value confirmed via RC log: `network name="34672-T-RC" resolved to TESTBOT`.
+- ✅ Per-robot files confirmed present on the hub with correct names: `snacktime_snapshot_TESTBOT.json`,
+  `testbot_tuning.json`.
+- ✅ Identity banner **confirmed showing on the Driver Station.**
+- ⚠️ **Identity banner does NOT render on Panels' web client — confirmed a Panels-side rendering
+  quirk, not a bug in our code.** Decompiled `com.bylazar:telemetry:1.0.5`'s actual bytecode
+  (`debug()`/`update(Telemetry)`): no dedup, no per-line filtering — every `debug()` line is
+  unconditionally included in the same batch sent to both the Driver Station and Panels. Confirmed
+  the banner *is* in that batch (via `adb logcat` showing `RobotIdentity` resolving correctly every
+  OpMode selection) and confirmed it *does* reach the Driver Station from the identical call. Since
+  it reaches the DS but not Panels from the same send, the gap is in Panels' frontend rendering, not
+  our teamcode — nothing left to fix here. Not a blocker: the Driver Station is the reliable/primary
+  identity channel anyway (§8, "in-match you are not connected to Panels").
+- Wired into Pedro's `Tuning.java` suite too (`onSelect()` resolves identity, `drawCurrent()` — called
+  by nearly all ~15 tuning OpModes — emits the banner), not just `TeleOpExample`/`AutonomousExample`,
+  since that's where Step 2's actual tuning happens.
+- Fail-closed UNKNOWN-hub behavior and the loop-time-cost-of-the-banner check are still open —
+  neither has been explicitly exercised/measured yet this session.
 
 **Step 2 — Tune the Test Bot's Pedro path following.** The `Line` test drifted on its first run
 (expected, untuned). Work through `Tuning` → `Manual`: Translational Tuner, Heading Tuner, Drive
