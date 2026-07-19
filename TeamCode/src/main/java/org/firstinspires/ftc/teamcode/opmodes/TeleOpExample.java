@@ -92,6 +92,7 @@ public class TeleOpExample extends CommandOpMode {
         Persistence.saveTuning();
         Persistence.Snapshot stopSnap = new Persistence.Snapshot();
         stopSnap.startingBatteryVolts = startBatteryVolts;
+        stopSnap.captureLoop(loopTimer); // loop-time trend data (§0)
         Persistence.writeSnapshot(stopSnap, hardwareMap); // post-match record (section 7)
         CommandScheduler.getInstance().reset();
     }

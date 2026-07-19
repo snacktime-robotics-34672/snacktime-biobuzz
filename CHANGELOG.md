@@ -19,6 +19,9 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, eighth pass)
+- **Snapshots now capture loop-time stats (avgLoopHz, avgLoopMs, maxLoopMs).** Each snapshot records the OpMode's smoothed average loop rate and worst-case cycle time via a new `Snapshot.captureLoop(LoopTimer)` helper, so we can watch loop-time trends across sessions and catch regressions caused by code changes (§0 prime directive). Wired into TeleOpExample and AutonomousExample. Also swept Persistence docstrings that still said "TuningConfig statics" from before the multi-class registry — now correctly say "registered tunables." (`util/Persistence.java`, `opmodes/TeleOpExample.java`, `opmodes/AutonomousExample.java`)
+
 ## 2026-07-18 (continued, seventh pass)
 - **Deadzone moved from Drivetrain into JoystickCurve.** The deadzone is an input-shaping concern, not a drivetrain concern, so it belongs alongside the other joystick curve parameters. JoystickCurve is now @Configurable with all four params as live-tunable statics (deadzone, minOutput, transitionPoint, transitionOutput). Registered in Persistence. (`util/JoystickCurve.java`, `subsystems/Drivetrain.java`, `util/Persistence.java`, `opmodes/TeleOpExample.java`)
 

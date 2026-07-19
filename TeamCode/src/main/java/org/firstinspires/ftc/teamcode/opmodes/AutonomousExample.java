@@ -140,7 +140,7 @@ public class AutonomousExample extends CommandOpMode {
         s.alliance = selectedAlliance;
         s.startPose = selectedStartPose;
         s.startingBatteryVolts = startBatteryVolts;
-        // TODO: add tuning values here as you dial them in (CLAUDE.md §7)
+        s.captureLoop(loopTimer); // loop-time trend data (§0). At init, values are 0 — that's fine.
         return s;
     }
 }

@@ -36,15 +36,16 @@ import java.util.Map;
  * Persistence — two jobs (CLAUDE.md §7):
  *
  *   1. TUNING BACKUP (session persistence):
- *      {@link #saveTuning()} writes every TuningConfig value to current_tuning.json on the hub.
+ *      {@link #saveTuning()} writes every registered tunable to current_tuning.json on the hub.
  *      {@link #loadAndApplyTuning(Telemetry)} reads it back and applies the values to the live
- *      TuningConfig statics, so dashboard-tuned values survive across robot restarts.
- *      Call save on every OpMode stop; call load on every OpMode init.
+ *      static fields on each class in TUNING_CLASSES, so dashboard-tuned values survive across
+ *      robot restarts. Call save on every OpMode stop; call load on every OpMode init.
  *      Limitation: a hub re-flash wipes the file — git is the real disaster backup (see below).
  *
  *   2. SNAPSHOT (traceability record):
  *      {@link #writeSnapshot(Snapshot, HardwareMap)} writes a full JSON record including git hash,
- *      hardware devices, and all TuningConfig values. Also logged via RobotLog so it appears in
+ *      hardware devices, loop-time stats (avg Hz + worst ms) so we can watch trends over time,
+ *      and every registered tunable. Also logged via RobotLog so it appears in
  *      robotControllerLog.txt — grep "SNAPSHOT:" after any session to copy values back to source
  *      and commit them (that is the git disaster-backup workflow).
  *
@@ -94,8 +95,22 @@ public final class Persistence {
         // getConnectionInfo() is standard FTC SDK API on every HardwareDevice.
         public Map<String, String> hardware = new LinkedHashMap<>();
 
-        // All TuningConfig values at the time of the write — auto-captured via reflection.
+        // Loop-time stats from the OpMode's LoopTimer at write time — populated via captureLoop().
+        // Watch these across sessions to spot regressions caused by code changes (§0 prime directive).
+        public double avgLoopHz  = 0.0;  // smoothed average loop rate
+        public double avgLoopMs  = 0.0;  // smoothed average cycle time
+        public double maxLoopMs  = 0.0;  // worst single-cycle time since reset (tail latency)
+
+        // Every registered tunable at the time of the write — auto-captured via reflection.
+        // Keys are namespaced "ClassName.fieldName" so multiple @Configurable classes don't collide.
         public Map<String, Object> tuning = new LinkedHashMap<>();
+
+        /** Populate loop stats from the OpMode's LoopTimer. Call once at stop, never in the loop. */
+        public void captureLoop(LoopTimer timer) {
+            avgLoopMs = timer.getAverageMs();
+            avgLoopHz = avgLoopMs > 0.0 ? 1000.0 / avgLoopMs : 0.0;
+            maxLoopMs = timer.getMaxLoopMs();
+        }
     }
 
     /** AUTO-EXPORT with hardware capture. Safe on init and stop. NEVER in the loop. */
@@ -125,8 +140,8 @@ public final class Persistence {
     // -------------------------------------------------------------------------
 
     /**
-     * Saves every TuningConfig value to current_tuning.json on the hub.
-     * Call on every OpMode stop/reset. NEVER in the loop.
+     * Saves every registered tunable to current_tuning.json on the hub, using namespaced
+     * "ClassName.fieldName" keys. Call on every OpMode stop/reset. NEVER in the loop.
      * Dashboard-modified values are saved here exactly as they are — they supersede source defaults
      * on the next load.
      */
@@ -145,8 +160,8 @@ public final class Persistence {
     }
 
     /**
-     * Loads current_tuning.json and applies every value back to the live TuningConfig statics.
-     * Dashboard-tuned values supersede source defaults automatically.
+     * Loads current_tuning.json and applies every value back to the live tunable statics on each
+     * class in TUNING_CLASSES. Dashboard-tuned values supersede source defaults automatically.
      * Telemeters loudly when a file is found — required by CLAUDE.md §7.
      * Call on every OpMode init. NEVER in the loop.
      *
@@ -228,7 +243,7 @@ public final class Persistence {
     }
 
     /**
-     * Applies a GSON-deserialized value to a TuningConfig field.
+     * Applies a GSON-deserialized value to a tunable static field.
      * GSON always deserializes JSON numbers as Double, so we convert to the field's actual type.
      */
     private static void applyToField(Field f, Object val) throws IllegalAccessException {
