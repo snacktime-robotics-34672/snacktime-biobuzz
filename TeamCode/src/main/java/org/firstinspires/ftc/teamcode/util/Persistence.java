@@ -81,7 +81,7 @@ public final class Persistence {
     public static class Snapshot {
         public String gitHash   = BuildInfo.GIT_HASH;
         public String buildTime = BuildInfo.BUILD_TIME;
-        public long   savedAtMillis = System.currentTimeMillis();
+        public long   savedAtSeconds = System.currentTimeMillis() / 1000L;
 
         public String alliance           = "UNKNOWN";
         public String startPose          = "UNKNOWN";

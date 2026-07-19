@@ -19,6 +19,12 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-07-18 (continued, fifteenth pass)
+- **Snapshot timestamp switched from milliseconds to seconds.** `savedAtMillis` (epoch millis,
+  hard to read at a glance) renamed to `savedAtSeconds` (epoch seconds). `Snapshot` is only ever
+  built at OpMode init/stop, never in the hot loop, so this has no loop-time cost either way.
+  (`util/Persistence.java`)
+
 ## 2026-07-18 (continued, fourteenth pass)
 - **Root-caused and fixed the `maxLoopMs` outlier** (`1005ms` worst-case cycle against a healthy
   ~6.6ms average, seen in the pulled snapshot). Cause: `Persistence.readBatteryVolts()` is
