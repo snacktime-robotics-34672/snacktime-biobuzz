@@ -1,5 +1,7 @@
 # SETUP.md — Getting the robot code running, from zero
 
+Robot WiFi Password: $na*k34672
+
 For Aaron (coach/director) and the student programmers. Follow this **in order**. Each phase ends in
 a **CHECKPOINT** — do not move past a failed checkpoint, because everything after it depends on it.
 Debugging one broken thing is easy; debugging five stacked broken things is not.
