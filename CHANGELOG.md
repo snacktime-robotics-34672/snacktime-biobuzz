@@ -19,6 +19,15 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-07
+- **Added a Simplified Technical English (STE-in-spirit) writing rule to `CLAUDE.md` §9.** Sets the
+  expectation that prose humans read — comments, subsystem/command docs, CHANGELOG, commit messages,
+  telemetry labels, and student-facing explanations — is written in short, active, consistent-term
+  English. It's STE *in spirit* (the style), not the formal ASD-STE100 approved-word dictionary, so it
+  never restricts genuine technical terms or dumbs down the code — that's the deliberate seam with the
+  Explain-It Gate (§1): it governs the writing, not the concepts. Filed as a style expectation, not a
+  NON-NEGOTIABLE gate. (`CLAUDE.md §9`)
+
 ## 2026-07-21
 - **Competition hub renamed `34672-C-RC` → `34672-RC` (robot inspection required the primary RC to be
   the canonical `<team>-RC`).** Updated `RobotIdentity` to match the test suffix `-T-RC` FIRST (it also

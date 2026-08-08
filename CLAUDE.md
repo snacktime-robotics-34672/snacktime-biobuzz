@@ -380,6 +380,31 @@ the code mostly aren't reading it line by line.
   what it owns, and how to tell if it's working.
 - **Consistent naming** matching the hardware map in §10.
 
+### Simplified Technical English (STE-in-spirit)
+Write the **prose humans read** in plain, controlled English — comments, subsystem/command docs,
+`CHANGELOG.md` entries, commit messages, telemetry labels, and student-facing explanations. This is
+STE *in spirit*, not the formal ASD-STE100 standard: we take the style, **not** an approved-word
+dictionary. It exists because the coach and the student directors read this prose to understand the
+robot without reading every line of code — clear writing is part of the generation-first workflow,
+not decoration.
+
+The rules:
+
+- **Short, active sentences.** Prefer active voice and one idea per sentence. "Clear the bulk cache
+  first" beats "The bulk cache should be cleared before other reads are performed."
+- **One term per thing.** Pick one name for a concept and reuse it. If it's the `target` pose, it's
+  never also "the goal" or "the setpoint" three lines later. Consistency beats variety.
+- **Plain words for the connective tissue; real terms where they teach.** Use ordinary words for the
+  glue ("read", "then", "if it fails"), but **do not** avoid or dumb down genuine technical terms —
+  *atomic*, *idempotent*, *follower*, *bulk cache*, `HashMap`. This is the deliberate seam with the
+  Explain-It Gate (§1): STE governs the **writing**, not the **concepts**. Students are meant to
+  learn the real vocabulary, so keep it and let the prose around it stay clear.
+- **Comment the *why*, briefly.** Reinforces the first bullet of §9 — don't let "short sentences"
+  turn one tight comment into six choppy ones. Economy is the goal, not word count.
+
+This is a style expectation, not a NON-NEGOTIABLE gate: apply it as you write, and lean on it hardest
+where humans glance fastest (telemetry labels, CHANGELOG, commit messages).
+
 ---
 
 ## 10. Hardware map
