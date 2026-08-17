@@ -19,6 +19,25 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-16
+- **Split the Pedro tuning constants per robot, so tuning the test bot no longer changes the
+  competition robot.** Before this, both robots shared one set of follower, drivetrain, and Pinpoint
+  constants, so any number recorded from a tuner landed on both. Now there is a comp set and a test
+  set, and `RobotIdentity` picks the right one when the follower is built. The drivetrain set is
+  split as well, because the forward and lateral velocity tuners write their numbers there. Motor
+  names and directions stay shared — the wiring is identical on both robots — and are built in one
+  place so the two sets cannot drift apart. An unidentified hub gets a third set: untuned Pedro
+  defaults capped at half power, with a warning in the log, so it still drives but never inherits
+  comp's tuning. The tuner OpModes now say to record their result into "this robot's" set, and the
+  robot banner names which one that is. Values themselves are unchanged, so both robots behave
+  exactly as before until each is tuned. (`pedroPathing/Constants.java`, `pedroPathing/Tuning.java`,
+  `opmodes/TeleOpExample.java`, `CLAUDE.md §6`)
+- **Fixed the drive-direction vector going stale when velocities are tuned.** Pedro works out the
+  direction the mecanum wheels actually prefer to drive from the forward and lateral velocities, but
+  it only does that inside its own constructor — setting the velocities afterwards left the vector at
+  Pedro's stock ratio, so tuned velocities were half-ignored. The constants helper now recomputes
+  that vector with Pedro's own formula. (`pedroPathing/Constants.java`)
+
 ## 2026-08-07
 - **Added a Simplified Technical English (STE-in-spirit) writing rule to `CLAUDE.md` §9.** Sets the
   expectation that prose humans read — comments, subsystem/command docs, CHANGELOG, commit messages,

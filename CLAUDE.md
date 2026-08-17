@@ -292,11 +292,21 @@ hub network name — see §10). Two tuning categories, handled differently *on p
 
 **Pedro constants** (follower velocities/PIDFs, pod offsets — `pedroPathing/Constants.java`):
 - Kept as **per-robot constant sets in code** (`compFollowerConstants` / `testFollowerConstants`,
-  and comp/test `PinpointConstants`), selected by `RobotIdentity` when the follower is built. Both
-  sets are committed to git, so both robots' path tuning is saved and reviewable.
+  comp/test `MecanumConstants`, and comp/test `PinpointConstants`), selected by `RobotIdentity` when
+  the follower is built. Both sets are committed to git, so both robots' path tuning is saved and
+  reviewable.
+- **The mecanum set is split too, because the drive velocities live there.** `ForwardVelocityTuner`
+  and `LateralVelocityTuner` print `xVelocity` / `yVelocity`, and Pedro keeps those on
+  `MecanumConstants` — they are per-robot numbers. What stays **shared** is only the wiring (motor
+  names and directions, identical on both robots), built in one private helper so the two sets can
+  never drift apart. `pathConstraints` is shared as well: it says when a path is done, not how hard
+  the robot drives.
+- An **UNKNOWN** hub gets a third set — untuned Pedro defaults capped at half power — and logs a
+  warning. It must still build a follower to run at all, so it cannot "load nothing" the way tuning
+  JSON does; capping power is how it fails closed. Never given comp's tuning.
 - Deliberately *not* in the JSON files: Pedro's tuners print a number you record into the constant
   set (rare, few values), the follower is built once at init, and holding whole `FollowerConstants`
-  objects stays robust across Pedro version bumps. `mecanumConstants` (motor names/dirs) is shared.
+  objects stays robust across Pedro version bumps.
 
 ---
 

@@ -86,11 +86,17 @@ public class Tuning extends SelectableOpMode {
 
     @Override
     public void onSelect() {
+        // Resolved once per OpMode selection (init-time, not the loop — §4), then used twice: it
+        // picks which robot's Pedro constants the follower is built from, and it feeds the banner
+        // that drawCurrent() emits every loop across the whole tuning suite.
+        RobotIdentity id = RobotIdentity.resolve();
+        idBanner = id.banner();
+
         if (follower == null) {
-            follower = Constants.createFollower(hardwareMap);
+            follower = Constants.createFollower(hardwareMap, id);
             PanelsConfigurables.INSTANCE.refreshClass(this);
         } else {
-            follower = Constants.createFollower(hardwareMap);
+            follower = Constants.createFollower(hardwareMap, id);
         }
 
         follower.setStartingPose(new Pose());
@@ -98,9 +104,6 @@ public class Tuning extends SelectableOpMode {
         poseHistory = follower.getPoseHistory();
 
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
-        // Resolved once per OpMode selection (init-time, not the loop — §4). Emitted every loop from
-        // drawCurrent() below so it's visible across the whole tuning suite, not just here.
-        idBanner = RobotIdentity.resolve().banner();
         Drawing.init();
     }
 
@@ -414,6 +417,7 @@ class ForwardVelocityTuner extends OpMode {
             telemetryM.debug("Forward Velocity: " + average);
             telemetryM.debug("\n");
             telemetryM.debug("Press A to set the Forward Velocity temporarily (while robot remains on).");
+            telemetryM.debug("To keep it: record as xVelocity in THIS robot's mecanum set in Constants.java.");
 
             for (int i = 0; i < velocities.size(); i++) {
                 telemetry.addData(String.valueOf(i), velocities.get(i));
@@ -520,6 +524,7 @@ class LateralVelocityTuner extends OpMode {
             telemetryM.debug("Strafe Velocity: " + average);
             telemetryM.debug("\n");
             telemetryM.debug("Press A to set the Lateral Velocity temporarily (while robot remains on).");
+            telemetryM.debug("To keep it: record as yVelocity in THIS robot's mecanum set in Constants.java.");
             telemetryM.update(telemetry);
 
             if (gamepad1.aWasPressed()) {
@@ -624,6 +629,7 @@ class ForwardZeroPowerAccelerationTuner extends OpMode {
             telemetryM.debug("Forward Zero Power Acceleration (Deceleration): " + average);
             telemetryM.debug("\n");
             telemetryM.debug("Press A to set the Forward Zero Power Acceleration temporarily (while robot remains on).");
+            telemetryM.debug("To keep it: add .forwardZeroPowerAcceleration(...) to THIS robot's follower set in Constants.java.");
             telemetryM.update(telemetry);
 
             if (gamepad1.aWasPressed()) {
@@ -726,6 +732,7 @@ class LateralZeroPowerAccelerationTuner extends OpMode {
             telemetryM.debug("Lateral Zero Power Acceleration (Deceleration): " + average);
             telemetryM.debug("\n");
             telemetryM.debug("Press A to set the Lateral Zero Power Acceleration temporarily (while robot remains on).");
+            telemetryM.debug("To keep it: add .lateralZeroPowerAcceleration(...) to THIS robot's follower set in Constants.java.");
             telemetryM.update(telemetry);
 
             if (gamepad1.aWasPressed()) {
@@ -1200,8 +1207,9 @@ class Circle extends OpMode {
 
 /**
  * Spins the robot 180° and calculates forwardPodY and strafePodX offsets for the Pinpoint localizer.
- * Prerequisite: both offsets must be set to 0 in Constants.java before running.
- * After running, enter the telemetered values as forwardPodY and strafePodX in Constants.java.
+ * Prerequisite: both offsets must be set to 0 in this robot's pinpoint set in Constants.java.
+ * After running, record the telemetered values into THAT SAME set — compPinpointConstants on the
+ * comp robot, testPinpointConstants on the test bot. The banner names the robot you are on.
  *
  * @author Havish Sripada - 12808 RevAmped Robotics
  * @author Baron Henderson - 20077 The Indubitables
@@ -1216,7 +1224,7 @@ class OffsetsTuner extends OpMode {
 
     @Override
     public void init_loop() {
-        telemetryM.debug("Prerequisite: both offsets must be 0 in Constants.java PinpointConstants.");
+        telemetryM.debug("Prerequisite: both offsets must be 0 in THIS robot's pinpoint set in Constants.java.");
         telemetryM.debug("Spin the robot " + Math.PI + " radians (180°). Offsets appear in telemetry.");
         telemetryM.update(telemetry);
         drawCurrent();
@@ -1226,7 +1234,7 @@ class OffsetsTuner extends OpMode {
     public void loop() {
         follower.update();
         telemetryM.debug("Total Angle: " + follower.getTotalHeading());
-        telemetryM.debug("Enter these values into Constants.java after tuning:");
+        telemetryM.debug("Record these into THIS robot's pinpoint set in Constants.java:");
         telemetryM.debug("strafePodX: " + ((72.0 - follower.getPose().getX()) / 2.0));
         telemetryM.debug("forwardPodY: " + ((72.0 - follower.getPose().getY()) / 2.0));
         telemetryM.update(telemetry);

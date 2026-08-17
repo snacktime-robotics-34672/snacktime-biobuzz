@@ -61,7 +61,8 @@ public class TeleOpExample extends CommandOpMode {
         driver = new GamepadEx(gamepad1);
 
         // Pedro drives the wheels; startTeleopDrive() sets it to open-loop mode (§10).
-        follower = Constants.createFollower(hardwareMap);
+        // The identity picks this robot's own Pedro tuning — comp and test drive differently.
+        follower = Constants.createFollower(hardwareMap, robotId);
         follower.startTeleopDrive();
 
         Persistence.Snapshot initSnap = new Persistence.Snapshot();
