@@ -19,6 +19,15 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-20
+- **Everyone on the team now gets the `deploySloth` button, not just Aaron.** The Sloth hot-reload
+  run configuration lived only in `.idea/workspace.xml`, which Android Studio keeps per-user and the
+  repo ignored, so it never reached Kieran or Elijah — they saw no way to hot-reload. The run
+  configuration is now shared through git, and `.gitignore` ignores the contents of `.idea/` instead
+  of the folder itself so that one file can be committed. Nothing about Sloth itself changed; the
+  plugin and runtime were always committed, and `./gradlew deploySloth` always worked from a
+  terminal. (`.gitignore`, `.idea/runConfigurations/deploySloth.xml`; CLAUDE.md §6 Tier 2)
+
 ## 2026-08-16
 - **Split the Pedro tuning constants per robot, so tuning the test bot no longer changes the
   competition robot.** Before this, both robots shared one set of follower, drivetrain, and Pinpoint

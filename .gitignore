@@ -41,7 +41,11 @@ captures/
 
 # IntelliJ
 *.iml
-.idea/
+# Ignore the IDE folder CONTENTS, not the folder itself: git will not descend into an excluded
+# directory, so `.idea/` would make the negation below impossible. Shared run configurations are
+# the one thing we commit — that's how everyone on the team gets the deploySloth button.
+.idea/*
+!.idea/runConfigurations/
 
 # For Mac users
 .DS_Store
