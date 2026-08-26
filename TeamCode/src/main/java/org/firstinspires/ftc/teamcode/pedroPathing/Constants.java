@@ -91,7 +91,7 @@ public class Constants {
     public static MecanumConstants testMecanumConstants = mecanumFor(81.34056, 65.43028, 1.0);
 
     /** Test-bot Pinpoint pod offsets. See the note on {@link #compPinpointConstants}. */
-    public static PinpointConstants testPinpointConstants = pinpointFor(6.735, 0.287);
+    public static PinpointConstants testPinpointConstants = pinpointFor(5.914, -1.228);
 
     // ===================================================================================
     // UNKNOWN HUB — fail closed (CLAUDE.md §5, §6)
