@@ -19,6 +19,20 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-27
+- **Pedro tuning values now appear on the Panels dashboard.** Tuning the PIDFs failed on the bench
+  because the Pedro constants never showed up as dashboard knobs — the `Constants` class was missing
+  the `@Configurable` annotation, which is how Panels finds tunables. Panels scans classes for that
+  annotation, so a class without it is invisible no matter how many public static fields it has.
+  Adding it exposes every nested value (both robots' PIDF gains, mass, zero-power accelerations,
+  drive velocities, pod offsets) under "Constants". The PIDF gains take effect live — Pedro re-reads
+  its follower constants every loop — so the Manual tuners (Translational / Heading / Drive /
+  Centripetal) are now usable as intended. Pod offsets show but only apply on OpMode restart; the
+  file documents which values are live and which are not. **Needs a full install, not a hot reload**
+  — Panels only scans for the annotation when the Robot Controller app starts. These values still
+  belong in code and git, not in the tuning JSON, so nothing was added to session persistence.
+  (`pedroPathing/Constants.java`; CLAUDE.md §6 Tier 1, Tier 3)
+
 ## 2026-08-20
 - **Everyone on the team now gets the `deploySloth` button, not just Aaron.** The Sloth hot-reload
   run configuration lived only in `.idea/workspace.xml`, which Android Studio keeps per-user and the

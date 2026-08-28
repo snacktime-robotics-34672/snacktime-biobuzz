@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.FollowerConstants;
 import com.pedropathing.ftc.FollowerBuilder;
@@ -36,7 +37,31 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *
  * WHAT IS SHARED: motor names and directions (the wiring is identical on both robots, CLAUDE.md §10)
  * and {@link #pathConstraints}. Everything else is split.
+ *
+ * WHY @Configurable: without it, Panels never shows these values, so the PIDF tuners in
+ * {@link Tuning} have no knobs to turn — you can run Translational/Heading/Drive Tuner and watch the
+ * robot, but you cannot change a gain while it runs. Panels finds tunables by scanning for this
+ * annotation on the class, then walks the object graph below each public static field. So annotating
+ * this one class exposes every nested gain (e.g. compFollowerConstants → coefficientsTranslationalPIDF
+ * → P/I/D/F) as a live dashboard field.
+ *
+ * WHAT IS LIVE vs. WHAT NEEDS A RESTART (verified against Pedro 2.1.2 source):
+ *   - FollowerConstants (PIDF gains, mass, zero-power accelerations, centripetal scaling) — LIVE.
+ *     Pedro's VectorCalculator re-reads the whole FollowerConstants object every loop, so a value you
+ *     change in Panels takes effect on the very next cycle. This is the set you actually tune.
+ *   - MecanumConstants xVelocity / yVelocity — LIVE (Pedro reads them on demand). The rest of that
+ *     set — maxPower, motor names, directions — is copied at construction and does NOT change live.
+ *   - PinpointConstants (pod offsets) — NOT live. The localizer reads them once when it is built.
+ *     Change one and you must restart the OpMode to see any effect.
+ *
+ * Panels shows all three sets (comp / test / fallback). Turn the knobs for the robot you are ON —
+ * the Tuning banner names it. Editing comp's gains while standing at the test bot changes nothing.
+ *
+ * These stay OUT of the tuning JSON on purpose (CLAUDE.md §6): they are recorded into this file and
+ * committed, so do NOT add Constants.class to Persistence.TUNING_CLASSES. Panels is how you find the
+ * number; git is how you keep it.
  */
+@Configurable
 public class Constants {
 
     // ===================================================================================
