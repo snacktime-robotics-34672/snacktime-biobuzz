@@ -19,6 +19,15 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-30
+- **TeleOp now draws the robot on the Panels field view.** The dot on the field graphic never moved
+  while driving, even though the X/Y/heading numbers in telemetry were correct — those are two
+  different channels, and only the numbers were being sent. Added the same field-draw call the Pedro
+  tuner OpModes already use (circle + heading line, updated every loop) so the field view now tracks
+  the robot live during TeleOp. This is a deliberate loop-time cost (a network send every loop) but
+  it goes to the dev dashboard, not the Driver Hub telemetry set, so it's the right place to pay it.
+  (`opmodes/TeleOpExample.java`; CLAUDE.md §0, §4 rule 6, §8)
+
 ## 2026-08-27
 - **Pedro tuning values now appear on the Panels dashboard.** Tuning the PIDFs failed on the bench
   because the Pedro constants never showed up as dashboard knobs — the `Constants` class was missing

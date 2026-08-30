@@ -1,7 +1,12 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import com.bylazar.field.FieldManager;
+import com.bylazar.field.PanelsField;
+import com.bylazar.field.Style;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.Vector;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
@@ -27,6 +32,13 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 @TeleOp(name = "34672 TeleOp (example)")
 public class TeleOpExample extends CommandOpMode {
 
+    // Panels field view — built once, reused every loop (§4 rule 8, no per-loop allocation).
+    // Without an explicit draw call the field graphic never moves, even though the X/Y/heading
+    // telemetry numbers below are already correct (they're a separate channel from the field draw).
+    private static final FieldManager panelsField = PanelsField.INSTANCE.getField();
+    private static final Style robotLook = new Style("", "#FF0000", 2.0);
+    private static final double ROBOT_RADIUS = 9;
+
     private final LoopTimer loopTimer = new LoopTimer();
     private BulkReads bulkReads;
     private Drivetrain drivetrain;
@@ -44,6 +56,8 @@ public class TeleOpExample extends CommandOpMode {
     public void initialize() {
         // MANUAL bulk caching — the biggest lever on loop time (section 0, section 4 rule 1).
         bulkReads = new BulkReads(hardwareMap);
+
+        panelsField.setOffsets(PanelsField.INSTANCE.getPresets().getPEDRO_PATHING());
 
         // Which robot is this? Read once, from the hub network name (see RobotIdentity).
         robotId = RobotIdentity.resolve();
@@ -150,6 +164,25 @@ public class TeleOpExample extends CommandOpMode {
         telemetry.addData("Y in", follower.getPose().getY());
         telemetry.addData("Heading °", Math.toDegrees(follower.getPose().getHeading()));
         telemetry.update();
+
+        // Moves the robot dot on the Panels field view. This is a network send every loop — a
+        // deliberate loop-time cost, flagged per §0/§4 — but it's dev-dashboard telemetry, not the
+        // Driver Hub set (rule 6), so it's the right place to pay it.
+        drawRobot(follower.getPose());
+        panelsField.update();
+    }
+
+    /** Draws the robot as a circle at pose, with a line showing heading (mirrors pedroPathing/Tuning.java's Drawing). */
+    private static void drawRobot(Pose pose) {
+        panelsField.setStyle(robotLook);
+        panelsField.moveCursor(pose.getX(), pose.getY());
+        panelsField.circle(ROBOT_RADIUS);
+
+        Vector v = pose.getHeadingAsUnitVector();
+        v.setMagnitude(v.getMagnitude() * ROBOT_RADIUS);
+        panelsField.setStyle(robotLook);
+        panelsField.moveCursor(pose.getX() + v.getXComponent() / 2, pose.getY() + v.getYComponent() / 2);
+        panelsField.line(pose.getX() + v.getXComponent(), pose.getY() + v.getYComponent());
     }
 
     /** Returns 0 if |value| is within the deadzone, otherwise passes value through unchanged. */
