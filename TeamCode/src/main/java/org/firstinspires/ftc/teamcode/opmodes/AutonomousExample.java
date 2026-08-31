@@ -133,6 +133,8 @@ public class AutonomousExample extends CommandOpMode {
     @Override
     public void run() {
         // RULE 1, NON-NEGOTIABLE: clear the bulk cache FIRST, every loop, always (§4).
+        // Tunables need nothing here: Panels writes straight into the statics this loop reads
+        // (§6 Tier 1), so a dashboard edit is live with no per-loop work at all.
         bulkReads.clear();
         if (startBatteryVolts == 0.0) {
             startBatteryVolts = Persistence.readBatteryVolts(hardwareMap);

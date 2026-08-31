@@ -20,6 +20,31 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **DEPENDENCY CHANGE (approved by Aaron): switched to the Sloth build of Panels. Live tuning now
+  works — it never had.** Turning any value in the dashboard did nothing, on any class: not the
+  Pedro constants, not `Drivetrain`, not `TuningConfig`. The cause was neither the dashboard nor our
+  code. **Sloth and Panels each loaded their own copy of every one of our classes.** Stock Panels
+  finds tunables by scanning the installed app and looking each class up by name, which hands it
+  *its* copy — not the copy Sloth loaded and the robot is running. Two classes, same name, separate
+  values. Panels wrote one, the robot read the other, and nothing logged an error because nothing
+  failed: the value just landed where nothing looks. Measured on the test bot — typing 50 gave 50.0
+  through Panels' handle and 0.0 through the robot's, under two different loaders.
+  `com.bylazar:fullpanels:1.0.12` is now `com.bylazar.sloth:fullpanels:0.2.4.1+1.0.12`, the same
+  kind of Sloth fork we already use for FTC Dashboard, from the same repo (already configured — no
+  new repository). It registers tunables through Sinister, so Sloth hands it the real class and
+  loader and only one copy ever exists. It also re-registers on hot reload, which stock Panels never
+  did. Package names are unchanged, so no imports moved; Sloth stays at 0.2.4 (the fork pins it
+  strictly). **Needs a full install, not a hot reload.** Verified: dependencies resolve with no stock
+  Panels left, no duplicate classes, APK assembles, all 36 unit tests pass. Watch the "Panels canary"
+  line in the Tuning telemetry — type a number into `PanelsProbe.probe` and it should move on the
+  next loop. If it ever stops moving after a version bump, live tuning is silently dead again and
+  that line is the only warning you will get.
+  (`TeamCode/build.gradle`, `diagnostics/PanelsProbe.java`, `pedroPathing/Tuning.java`,
+  `pedroPathing/Constants.java`; CLAUDE.md §6 Tier 1 + "changing a library", §14)
+- **TeleOp and Autonomous can now be tuned from the dashboard while they run**, and it costs nothing
+  per loop. Panels writes straight into the same statics the loop already reads, so no copying,
+  no flag, and no extra work in either OpMode — the Tier 1 promise finally works as written.
+  (`opmodes/TeleOpExample.java`, `opmodes/AutonomousExample.java`; CLAUDE.md §0, §6 Tier 1)
 - **TeleOp now draws the robot on the Panels field view.** The dot on the field graphic never moved
   while driving, even though the X/Y/heading numbers in telemetry were correct — those are two
   different channels, and only the numbers were being sent. Added the same field-draw call the Pedro

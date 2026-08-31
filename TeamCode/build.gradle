@@ -146,8 +146,13 @@ dependencies {
     implementation 'com.pedropathing:ftc:2.1.2'
     implementation 'com.pedropathing:telemetry:1.0.0'
 
-    // Panels Dashboard
-    implementation "com.bylazar:fullpanels:1.0.12"
+    // Panels Dashboard (Sloth fork). Version reads <sloth build>+<panels version>, same scheme as
+    // the dashboard line above. MUST stay the Sloth fork: stock Panels finds tunables by scanning
+    // the installed APK and resolving them with Class.forName, which returns ITS copy of a class,
+    // not the copy Sloth is running. Every dashboard edit then lands in a class no OpMode reads,
+    // silently. This fork is a Sinister scanner instead — Sloth hands it the classes and loader it
+    // actually loaded — so there is only ever one copy. Measured 2026-08-30; see CHANGELOG.
+    implementation "com.bylazar.sloth:fullpanels:0.2.4.1+1.0.12"
 
     // Off-robot unit tests (CLAUDE.md §9) — test-only, does not affect the APK
     testImplementation "junit:junit:4.13.2"
