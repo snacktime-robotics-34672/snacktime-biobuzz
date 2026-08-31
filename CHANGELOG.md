@@ -20,6 +20,29 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **Stand your ground: the robot now braces when the driver lets go.** Release the sticks and it
+  captures where it is and actively fights to stay there, so an opponent trying to shove us off a
+  scoring spot gets pushed back instead of moving us. Touch a stick and it hands control straight
+  back; the next time you let go it captures a fresh spot. The Driver Hub shows `HOLDING (braced)`
+  or `manual`, because the two feel very different on the sticks and a driver needs to know which
+  one they are in. Carried over from the Decode season — the design note that was sitting in
+  `TeleOpExample` is now working code.
+  Two details make or break it. **The spot is captured once**, at the moment the brace engages, and
+  never re-read: read it every loop and a steady push would walk the target along with the robot,
+  which is not holding at all. And there is a short **settle delay** (`holdEntryDelayMs`, 250 ms)
+  because the robot is still coasting when the stick is released — brace instantly and it lurches
+  backwards to a spot it has already passed. Set the delay to 0 if you want it to snap back to the
+  exact release point instead.
+  Three live knobs on `Drivetrain`: `holdWhenIdleEnabled` (on), `holdEntryDelayMs`, and
+  `holdUseScaling`. **Turn `holdUseScaling` off to make it fight harder** — Pedro scales hold
+  corrections down by default, which is gentle; leave it on if the robot jitters around the held
+  spot. It reuses the follower PIDFs from the Tuning OpMode, so hold quality rides on that tuning
+  and there is no second controller to tune. **Do not enable it together with
+  `headingCorrectionEnabled`** — Pedro's hold already governs heading and the two would fight over
+  the same motors; TeleOp says so loudly at init if both are on. Ten off-robot tests cover the
+  engage, release, and disable paths (46 total, all passing).
+  (`util/StandYourGround.java`, `subsystems/Drivetrain.java`, `opmodes/TeleOpExample.java`;
+  CLAUDE.md §0, §3, §5, §6 Tier 1, §8, §9)
 - **Panels edits to the Pedro constants now reach the running robot, every loop.** The tuning
   OpModes built the follower once at init and never looked at `Constants.java` again, so some values
   you turned in Panels changed nothing until you re-selected the OpMode. The tuning suite now pushes

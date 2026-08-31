@@ -22,6 +22,7 @@ import org.firstinspires.ftc.teamcode.util.LogCleanup;
 import org.firstinspires.ftc.teamcode.util.LoopTimer;
 import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
+import org.firstinspires.ftc.teamcode.util.StandYourGround;
 
 /**
  * TeleOpExample — field-centric mecanum drive. LEFT_BUMPER = slow mode.
@@ -51,6 +52,8 @@ public class TeleOpExample extends CommandOpMode {
     // the Driver Station, which does.
     private String idBanner;
     private String idBannerHtml;
+    // The defensive brace: holds position whenever the driver lets go of the sticks.
+    private final StandYourGround standYourGround = new StandYourGround();
 
     @Override
     public void initialize() {
@@ -78,6 +81,14 @@ public class TeleOpExample extends CommandOpMode {
         // The identity picks this robot's own Pedro tuning — comp and test drive differently.
         follower = Constants.createFollower(hardwareMap, robotId);
         follower.startTeleopDrive();
+
+        // Fail loud rather than let two controllers fight over the same motors. Pedro's point-hold
+        // governs heading while the brace is active, so heading correction has nothing to add and
+        // would pull against it (§5 — say so clearly instead of starting degraded).
+        if (Drivetrain.holdWhenIdleEnabled && Drivetrain.headingCorrectionEnabled) {
+            telemetry.addLine("*** CONFLICT: turn OFF headingCorrectionEnabled — "
+                    + "stand-your-ground already holds heading ***");
+        }
 
         Persistence.Snapshot initSnap = new Persistence.Snapshot();
         initSnap.robot = robotId.robot.name();
@@ -113,7 +124,15 @@ public class TeleOpExample extends CommandOpMode {
         double forward = applyDeadzone(driver.getLeftY(), dz);
         double strafe  = applyDeadzone(-driver.getLeftX(), dz);
         double turn    = applyDeadzone(-driver.getRightX(), dz);
-        follower.setTeleOpDrive(forward * cap, strafe * cap, turn * cap, false);
+
+        // STAND YOUR GROUND. Let go of the sticks and the robot braces on the spot instead of
+        // coasting, so a push does not move us. Touch a stick and it hands control straight back.
+        // While holding, Pedro is driving the wheels to the held pose, so issuing a manual drive
+        // command would be fighting it — hence the branch rather than an unconditional call.
+        boolean holding = standYourGround.update(follower, forward, strafe, turn);
+        if (!holding) {
+            follower.setTeleOpDrive(forward * cap, strafe * cap, turn * cap, false);
+        }
         follower.update();
 
         // ─────────────────────────────────────────────────────────────────────────────────────
@@ -160,6 +179,10 @@ public class TeleOpExample extends CommandOpMode {
         // per-loop allocation (§4 rule 8).
         telemetry.addLine(idBannerHtml);
         PanelsTelemetry.INSTANCE.getTelemetry().debug(idBanner);
+        // Current mode, which §8 asks for on the Driver Hub — a driver needs to know at a glance
+        // whether the robot is braced or free, because the two feel very different on the sticks.
+        // Constant strings, so no per-loop allocation (§4 rule 8).
+        telemetry.addData("Drive", holding ? "HOLDING (braced)" : "manual");
         telemetry.addData("Loop Hz", loopTimer.getHz());
         telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
         telemetry.addData("X in", follower.getPose().getX());
@@ -194,6 +217,7 @@ public class TeleOpExample extends CommandOpMode {
 
     @Override
     public void reset() {
+        standYourGround.reset(); // drop any hold before the follower stops driving
         follower.breakFollowing();
         drivetrain.stop();
         Persistence.saveTuning(robotId);

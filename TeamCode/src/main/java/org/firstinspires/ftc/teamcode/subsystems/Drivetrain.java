@@ -24,6 +24,24 @@ public class Drivetrain extends SubsystemBase {
     public static double driveSpeedCap    = 1.0;   // 0..1, teleop full-speed multiplier
     public static double driveSlowModeCap = 0.35;  // 0..1, precision mode multiplier
 
+    // ---- Stand your ground: hold position when the sticks are released ----------------------
+    // The robot captures where it is and fights to stay there until the driver touches a stick.
+    // See util/StandYourGround.java. Do NOT enable this together with headingCorrectionEnabled
+    // below — Pedro's point-hold already governs heading, so the two fight over the same motors.
+
+    public static boolean holdWhenIdleEnabled = true;
+
+    // How long the sticks must sit at zero before the brace engages, in ms. This exists because the
+    // robot is still coasting the moment the stick is released: hold instantly and it lurches
+    // backwards to a pose it has already passed. Set to 0 to snap back to the exact release point.
+    public static double holdEntryDelayMs = 250;
+
+    // false makes the brace fight HARDER. Pedro scales hold corrections down by
+    // holdPointTranslationalScaling / holdPointHeadingScaling (0.45 / 0.35 in FollowerConstants) so
+    // a hold is gentle by default. Turn this off if an opponent can still shove us off the spot;
+    // leave it on if the robot jitters or hunts around the held pose.
+    public static boolean holdUseScaling = true;
+
     // Heading-hold PIDF for TeleOp — resists drift when driver isn't turning.
     // TUNE ORDER: enable, raise headingP until it resists; add headingD if it oscillates; leave headingI at 0.
     public static boolean headingCorrectionEnabled    = false;
