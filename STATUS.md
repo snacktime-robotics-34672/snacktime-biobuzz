@@ -1,16 +1,29 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-07-19 — **Step 1 confirmed on-robot: two-robot identity works.** Test hub
-named, identity resolves correctly, per-robot tuning/snapshot files confirmed present with the right
-names, and the identity banner confirmed showing on the Driver Station (Panels rendering confirmed
-as a Panels-side quirk, not our code — traced via decompiled bytecode, not a blocker). Also: two-robot
-support built + tuning-save helper — robot identity (from hub network name) + robot-aware
-persistence: per-robot **committed** tuning files, per-robot snapshots, fail-closed on UNKNOWN.
-`./save-tuning.sh` (auto-detects the robot) pulls a hub's tuning into `tuning/` to commit. Lets us
-develop on a Test bot and deliver a reliable Competition robot off one codebase. (Earlier 2026-07-18:
-**Phase 0 complete, 6-of-6**; TeleOp direction + the `maxLoopMs` 1005→27ms spike both fixed.) **Next-session
-plan (ordered):** confirm hub identity on-hub → test-bot Pedro tuning → confirm JSON save workflow →
-Limelight detection → Pedro path-follow to the ball (see "Next action").
+**Last updated:** 2026-08-30 — **Live dashboard tuning works for the first time, and the Decode
+carry-over list is complete.**
+
+The headline is a bug, not a feature: **Tier 1 live tuning had never worked on this robot, for any
+tunable.** Stock Panels and Sloth each loaded their own copy of every `@Configurable` class — same
+name, separate values — so Panels wrote one copy and the robot read the other, with no error
+anywhere. Proven on the test bot by reading a value both ways (50.0 through Panels' handle, 0.0
+through the robot's, under two different classloaders). Fixed by moving to the Sloth fork of Panels
+(`com.bylazar.sloth:fullpanels`). Tagged **`panels-tuning-working`** as the known-good rollback
+point. A canary (`PanelsProbe.probe` + the Tuning telemetry line) now guards it, because the failure
+is completely silent.
+
+Also landed this session: Pedro constants apply to the running follower every loop; the
+unidentified-hub half-power cap actually holds now (it was being discarded on the first path);
+**stand-your-ground** (brace on stick release); **drive-to-position** commands; **alliance
+mirroring** (author autos for blue, code plays red); timeouts on every path command; and tuning
+values can no longer vanish silently on restore. Off-robot tests went 36 → **73**.
+
+**Still the top open item: the Pedro follower PIDFs are untuned** (Step 2 below). Everything built
+this session — hold quality, drive-to-pose accuracy, path tracking — rides on that tuning, and it is
+now finally possible to do it live from the dashboard.
+
+(Earlier: 2026-07-19 two-robot identity confirmed on-robot; 2026-07-18 **Phase 0 complete, 6-of-6**,
+TeleOp direction + the `maxLoopMs` 1005→27ms spike both fixed.)
 
 **Read `CLAUDE.md` first** — that's the charter (rules + architecture) and it governs everything.
 This file is only the *current state*: what's verified, what's left, and what to do next. Keep it
@@ -57,8 +70,17 @@ of checking. Verify, don't assume.
   LEFT_BUMPER slow mode, loop-time readout
 - **Autonomous**: Driver-Hub pre-match menu (alliance / start pose / field / delay), command-tree
   scheduling, command lifecycle logging (gated behind `verboseTelemetry`), snapshot persistence
-- **Path following**: `FollowPathCommand` wraps Pedro so autos compose as command trees; Pedro
-  localization live and tracking pose on Panels field view
+- **Path following**: `FollowPathCommand` wraps Pedro so autos compose as command trees (built-in
+  timeout as of 2026-08-30); Pedro localization live and tracking pose on Panels field view
+- **Drive to a spot**: `DriveToPoseCommand` — straight line from wherever the robot is to a target
+  pose, then holds. Builds its path at run time from the live pose, so it works after a knock or a
+  handoff. Target may be a `Supplier` for vision-driven or alliance-driven spots
+- **Stand your ground**: release the sticks and the robot braces on the spot and fights a push.
+  `Drivetrain.holdWhenIdleEnabled` / `holdEntryDelayMs` / `holdUseScaling`
+- **Write autos once**: `AutonMenu.resolve(pose)` mirrors a blue-authored pose for the selected
+  alliance, then applies that field's offsets. **Set `AllianceMirror.seasonSymmetry` at kickoff**
+- **Live tuning that actually reaches the robot** (since 2026-08-30) — turn a knob in Panels and the
+  running OpMode picks it up, in TeleOp, Auto and the Tuning suite alike
 - **Health telemetry**: `DiagnosticsCenter.reportProblem(code, data)` from any subsystem drains to
   Driver Hub each loop
 - **Per-field pose deltas**: `FieldTweaks.lookup(isRed, field)` returns the live-tunable pose
@@ -92,7 +114,7 @@ Verified via `./gradlew :TeamCode:dependencies` and by reading `TeamCode/build.g
 | `org.solverslib:pedroPathing` | **0.3.4** | glue only — does NOT bundle Pedro |
 | `com.pedropathing:ftc` | **2.1.2** | our own declared line — we own this version |
 | `com.pedropathing:telemetry` | 1.0.0 | |
-| `com.bylazar:fullpanels` | **1.0.12** | full Panels bundle (field/graphs/configurables/capture/etc.) |
+| `com.bylazar.sloth:fullpanels` | **0.2.4.1+1.0.12** | full Panels bundle — **the Sloth fork, and it must stay that way.** Version reads `<sloth build>+<panels version>`. Stock `com.bylazar:fullpanels` cannot see Sloth-loaded classes, which silently breaks all live tuning (see Landmines) |
 | `dev.frozenmilk:Load` | **0.2.4** | Sloth Load Gradle plugin — root buildscript classpath |
 | `dev.frozenmilk.sinister:Sloth` | **0.2.4** | Sloth hot-reload runtime |
 | `com.acmerobotics.slothboard:dashboard` | **0.2.4+0.5.1** | Sloth's fork of FTC Dashboard (resolves the conflict — same API) |
@@ -104,11 +126,34 @@ Verified via `./gradlew :TeamCode:dependencies` and by reading `TeamCode/build.g
 
 ---
 
-## Next action — ordered plan for the next session (set 2026-07-19)
+## Next action — ordered plan (revised 2026-08-30)
 
-**Phase 0 is done** — the whole generation-first loop (AI writes code → hot reload → live tune →
-observe on real telemetry → persist a record) is proven end to end on real hardware. Aaron's
-priority order for what's next:
+**Phase 0 is done.** One correction to how that was recorded: the "live tune" leg of the loop was
+*not* actually proven until 2026-08-30 — Panels edits never reached the robot (see Landmines). Every
+other leg (AI writes → hot reload → observe on real telemetry → persist a record) was genuinely
+proven in July. The loop is now complete for real.
+
+**Current priority order:**
+
+| Step | State |
+|---|---|
+| 1. Hub identity works on real hubs | ✅ done 2026-07-19 |
+| 2. **Tune the test bot's Pedro PIDFs** | **⬅ NEXT, and now unblocked** |
+| 3. Confirm the JSON tuning save workflow round-trip | ⚠️ blocked until 2026-08-30, now possible |
+| 4. Limelight object detection | not started |
+| 5. Pedro path-follow to the detected ball | depends on 2 & 4 |
+
+**Step 2 is the one that matters most now.** Everything built in August — stand-your-ground hold
+quality, drive-to-position accuracy, path tracking — rides on the follower PIDFs, and they are still
+Pedro's stock values. `Constants.java` still carries open TODOs: neither robot has been weighed
+(both sit at a placeholder 6.5 kg), and comp's drive velocities are stock defaults. Work through
+`Tuning` → `Manual` one knob at a time (§6), now that turning a knob actually changes the robot.
+
+**Step 3 was never actually possible before.** Its whole premise — "live-tune a value in Panels,
+stop, save, confirm it reloads" — depended on live tuning working, which it did not. Worth running
+now, start to finish, to close the "both robots' tuning is durably saved" guarantee.
+
+Original detail on each step follows.
 
 **Step 1 — Confirm the hub Wi-Fi name / identity strategy works on the real hubs — DONE 2026-07-19.**
 - ✅ Test hub named `34672-T-RC` in the REV Hardware Client, rebooted.
@@ -197,12 +242,24 @@ beyond today's motor-presence + battery checks. Planned checks, recorded as TODO
 - **Sensor checks** — Limelight reachable, Pinpoint (I2C) responding, rangefinder reading (the
   check already stubbed at `SystemsCheck.java`; overlaps Step 4's Limelight work).
 
-**Robot Hold — idle position-hold / defensive brace (added 2026-07-20 — new scope, not in the
-ordered 1–5; depends on Step 2 Pedro tuning).** A big defensive-play feature: when all drive inputs
-sit at zero, the robot captures its **current field pose at that instant** and actively holds that
-exact x/y/heading, so an opponent pushing us off a scoring spot is fought back to where we were.
-Recorded as a TODO in `opmodes/TeleOpExample.java` (right after the `follower.setTeleOpDrive` block).
-Design already sketched there:
+**Robot Hold — idle position-hold / defensive brace — ✅ BUILT 2026-08-30** as
+`util/StandYourGround.java`, wired into `TeleOpExample`. Every design point sketched below was kept.
+Two things changed in the build:
+- **Added a settle delay** (`Drivetrain.holdEntryDelayMs`, 250 ms). The robot is still coasting when
+  the stick is released, so bracing at that instant captures a pose it has already passed and lurches
+  backwards to reach it. The delay lets it coast and hold where it actually stopped. Set to 0 for
+  snap-back-to-release-point. This also answers the open question below a third way — no button, but
+  no instant grab either.
+- **It yields to path commands.** Sticks are idle while a `DriveToPoseCommand` runs, so without this
+  the brace would grab the wheels mid-move. Three modes now show on the Driver Hub: `manual`,
+  `HOLDING (braced)`, `AUTO (driving to a spot)`.
+
+**Still to do on the bench:** decide `holdUseScaling`. It ships `true` (Pedro's gentle default,
+0.45 translation / 0.35 heading) because the PIDFs are untuned and unscaled correction can hunt.
+**Turn it off to make the brace fight harder.** Also unverified: whether drivers want the 250 ms
+delay at all. Both are live knobs — decide with a driver pushing the robot.
+
+Original design notes (all still accurate):
 - **Capture ONCE on entry**, never re-capture while held — the target is where the robot was the
   moment the sticks hit zero; re-reading pose each loop lets a steady push walk the target and kills
   the brace. Small local DRIVING↔HOLDING state (§3 permits a mode state machine), capturing
@@ -216,6 +273,59 @@ Design already sketched there:
   auto-hold can fight a driver making fine sub-deadzone line-up nudges. Decide on the bench.
 
 **SystemsCheck build-out (added 2026-07-20 — not slotted into the ordered 1–5 above; new scope).**
+
+---
+
+## Decode-season carry-over — audited 2026-08-30
+
+Aaron's lead asked which of the team's best Decode work made it across. Audited against the actual
+code, not memory:
+
+| Capability | State |
+|---|---|
+| Custom persistence of settings | ✅ `util/Persistence.java` — per-robot tuning + snapshots |
+| Tuning OpMode quality-of-life | ✅ and well past Decode (identity banner, live PIDF readout, `applyLive`, canary) |
+| Red/blue code sharing for autos | ✅ built 2026-08-30 (`AllianceMirror` + `AutonMenu.resolve`) |
+| Pose harmonization with the field view | ✅ for **Panels** (`setOffsets(PEDRO_PATHING)`); the FTC-Dashboard version does not apply, we don't draw to it |
+| Stand your ground | ✅ built 2026-08-30 |
+| Drive-to-position commands | ✅ built 2026-08-30 |
+| Pose transfer TeleOp ↔ Auton | ❌ **not built** — see below |
+
+---
+
+## Open work (consolidated 2026-08-30)
+
+**On the bench, needs a robot and a driver:**
+- **Step 2: tune the Pedro follower PIDFs.** Blocks the quality of everything else. Also: weigh both
+  robots (`Constants.java` still has a placeholder 6.5 kg for each) and run the velocity tuners on
+  comp (still stock defaults).
+- **Step 3: prove the tuning save round-trip** — live-tune → stop → `./save-tuning.sh` → commit →
+  power-cycle → confirm `LOADED … TUNING`.
+- **Stand-your-ground feel:** `holdUseScaling` on (gentle) vs off (fights harder), and whether
+  drivers want the 250 ms settle delay. Both live knobs.
+- **Alliance mirroring:** set `AllianceMirror.seasonSymmetry` at kickoff and **verify it on a real
+  field**. A wrong symmetry does not error — it drives a good path into the wrong quarter.
+- **Field tweak direction:** confirm whether the red tweaks should nudge in absolute field
+  coordinates (what we built) or alliance-relative. Tell: tune blue, then check whether red needs the
+  same sign or the opposite one.
+
+**Not started:**
+- **Step 4: Limelight object detection** — greenfield. `Vision` subsystem in `subsystems/`, detection
+  on the camera never the hub (§4 rule 4), relative aiming never pose (§3). `StaleWatcher` is ready
+  to wire in for "lost target" handling.
+- **Step 5: path-follow to a detected ball** — depends on 2 and 4.
+- **Pose transfer TeleOp ↔ Auton.** `Snapshot.lastKnownGoodPose` exists as a field and is never
+  written or read. **Open question for Aaron: which direction?** The usual one is auton→teleop (carry
+  the final auto pose into TeleOp so field-centric drive starts correct); the request as stated was
+  teleop→auton, which may mean something different.
+- **SystemsCheck build-out** — gamepad LED status, stick-drift check, sensor reachability. Detailed
+  below.
+- **`GameMechanism`** is still a template. Fill in at kickoff, and add it to
+  `Persistence.TUNING_CLASSES`.
+
+**Housekeeping:**
+- Branch protection on `master` vs. students pushing (see Handoff notes).
+- FTC SDK 11.2 upgrade still on hold pending Sloth Load 0.2.5 — revisit September 2026.
 
 ---
 
@@ -372,6 +482,32 @@ Design already sketched there:
 
 ## Landmines & notes
 
+- **Panels vs Sloth: two copies of every class — RESOLVED 2026-08-30, and the most expensive bug so
+  far. READ THIS BEFORE TOUCHING ANY DASHBOARD DEPENDENCY.**
+  Stock Panels finds `@Configurable` classes by scanning the **installed APK's dex files**, then
+  resolves each one with `Class.forName` from its own classloader. Sloth loads our teamcode from a
+  **separate dex into its own classloader**. Both succeed, so two classes exist with the same name
+  and **separate static values**. Panels wrote one; the robot read the other. Nothing logged an
+  error, because nothing failed — the value simply landed where nothing looks.
+  **Effect: Tier 1 live tuning had never worked, for any `@Configurable` class** — not the Pedro
+  constants, not `Drivetrain`, not `TuningConfig`. Months of "the dashboard knob does nothing" all
+  trace here. Measured on the test bot: typing 50 read back as 50.0 through Panels' own field handle
+  and 0.0 through the robot's, under `PathClassLoader` vs `SlothClassLoader`.
+  **Fix:** `com.bylazar.sloth:fullpanels`, which registers through Sinister — Sloth hands it the real
+  class and loader, so only one copy exists. It also re-registers on hot reload, which stock never
+  did. **Never revert to `com.bylazar:fullpanels`.**
+  **Guard:** `diagnostics/PanelsProbe.probe` + the "Panels canary" line in the Tuning telemetry. Type
+  a number into it; the line must move next loop. **Re-check after ANY Panels or Sloth version bump.**
+  Rollback point: tag `panels-tuning-working`.
+  *Diagnosis note for future sessions:* two earlier theories were confirmed true and still useless —
+  Panels really does write nested fields in place, and Pedro really does re-read its constants every
+  loop. Neither mattered, because the write was landing in a different class. When a dashboard edit
+  does nothing, check **class identity and classloader** before anything else.
+
+- **A new `@Configurable` field still needs a full install.** Panels builds its registry when the RC
+  app starts, so a tunable added by hot reload has nothing registered to write into. Existing
+  tunables hot-reload fine; new ones need Tier 3.
+
 - **FTC Dashboard vs Sloth — RESOLVED.** We're on `com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1`
   (Sloth's fork) instead of stock `com.acmerobotics.dashboard`. Same API, no source changes, hot
   reload works. If anyone re-adds the stock dashboard, it will break Sloth again.
@@ -383,10 +519,16 @@ Design already sketched there:
   coordinated change: Gradle wrapper, AGP classpath, and all 9 SDK deps (11.1.0 → 11.2.0) in the
   same build. **Revisit September 2026.**
 
-- **Panels `@Configurable` on nested objects — UNTESTED.** `FieldTweaks` holds 6 static
-  `AutonFieldTweaks` instances, each with `xOffsetInches`/`yOffsetInches`/`headingOffsetDeg`
-  fields. If Panels doesn't recurse into the nested objects, we'll flatten to 18 individual
-  `public static double` fields. Verify at first bench session.
+- **Panels `@Configurable` on nested objects — RESOLVED, it works.** Confirmed by reading the
+  configurables bytecode: `processValue` recurses into any non-primitive field via
+  `getDeclaredFields()`, honours `@IgnoreConfigurable`, and writes a nested leaf **in place** with a
+  reflective set on the owning instance — it never builds a replacement object. So `FieldTweaks`'
+  six nested `AutonFieldTweaks`, and Pedro's whole `FollowerConstants` graph, register and edit
+  correctly. No flattening needed.
+  **The related trap that IS real:** never let Panels walk a live runtime object. `Tuning.follower`
+  registered ~4000 fields and crowded `Constants` out of the registry entirely — every Pedro PIDF
+  edit was then looked up, not found, and dropped with no error. `@IgnoreConfigurable` on that field
+  is load-bearing, not tidiness. Keep it.
 
 - **No dependency locking.** The `{strictly X}` markers in the dependency report are Android
   Gradle Plugin variant-alignment constraints, not lockfile pins — the report's own legend says
@@ -424,25 +566,31 @@ Design already sketched there:
 
 ---
 
-## File inventory (as of 2026-07-18)
+## File inventory (as of 2026-08-30)
 
-`find TeamCode/src/main/java -name '*.java' -path '*teamcode*' | wc -l` → **30 files** across:
+**34 files** in `TeamCode/src/main/java/.../teamcode/`:
 
-- `opmodes/` — `AutonomousExample`, `TeleOpExample`, `AutonMenu`, `SystemsCheck`
-- `subsystems/` — `Drivetrain` (now owns its own tunables), `GameMechanism` (template)
-- `commands/` — `FollowPathCommand`
-- `diagnostics/` — `DiagnosticsCenter`, `Problem`, `ProblemSeverity`
+- `opmodes/` — `AutonomousExample`, `TeleOpExample`, `AutonMenu` (now owns `resolve()`, the one place
+  a pose becomes alliance-and-field-correct), `SystemsCheck`
+- `subsystems/` — `Drivetrain` (owns its tunables: speed caps, heading PIDF, hold settings, command
+  timeouts), `GameMechanism` (template)
+- `commands/` — `FollowPathCommand` (now with a built-in timeout), **`DriveToPoseCommand`**
+- `diagnostics/` — `DiagnosticsCenter`, `Problem`, `ProblemSeverity`, **`PanelsProbe`** (live-tuning
+  canary — keep it)
 - `config/` — `TuningConfig` (cross-cutting flags only), `AutonFieldTweaks`, `FieldTweaks`
 - `hardware/` — `BuildInfo` (generated `GIT_HASH` + `BUILD_TIME`)
 - `util/` — `BulkReads`, `LoopTimer`, `Persistence`, `Datalogger`, `ServoUtil`, `HeadingCorrector`,
-  `JoystickCurve`, `Profiler`, `SlewRateLimiter`, `StaleWatcher`, `TelemetryMenu`, `LogCleanup`
+  `JoystickCurve`, `Profiler`, `SlewRateLimiter`, `StaleWatcher`, `TelemetryMenu`, `LogCleanup`,
+  **`StandYourGround`**, **`AllianceMirror`**
 - `util/profile/` — `AsymmetricMotionProfile`, `ProfileConstraints`, `ProfileState`
-- `pedroPathing/` — `Constants` (Pinpoint wired in, real pod offsets), `Tuning` (from Quickstart,
-  includes `OffsetsTuner` and the `Line`/`Triangle`/`Circle` path-follow tests)
+- `pedroPathing/` — `Constants` (per-robot sets + `applyLive()`), `Tuning` (from Quickstart, includes
+  `OffsetsTuner` and the `Line`/`Triangle`/`Circle` path-follow tests)
 
-**Off-robot tests** in `TeamCode/src/test/java/.../logic/`:
+**Off-robot tests** in `TeamCode/src/test/java/.../logic/` — **73 tests, all green** under
+`./gradlew :TeamCode:test`:
 `JoystickCurveTest`, `SlewRateLimiterTest`, `StaleWatcherTest`, `AsymmetricMotionProfileTest`,
-`ServoUtilTest`. All green under `./gradlew :TeamCode:test`.
+`ServoUtilTest`, `PersistenceFileNamingTest`, **`PersistenceApplyFieldTest`**,
+**`StandYourGroundTest`**, **`DriveToPoseTest`**, **`AllianceMirrorTest`**.
 
 ---
 
@@ -498,16 +646,21 @@ Managed via `claude.ai/code/routines`:
 - **Kieran & Elijah (students)** are the code-level directors. Per the relaxed Explain-It Gate,
   they can handle sophisticated patterns — but when they don't understand something, teach them,
   don't strip it out.
-- **Repo is on the `snacktime-robotics-34672` GitHub org** (private, Free plan → no enforced branch
-  protection; CI runs unit tests on push). Everything committed + pushed; working tree clean.
-- **Recent commits** worth being aware of (newest first):
-  - `dd8c00c` — `save-tuning.sh` auto-detects the robot
-  - `5621ac1` — **finalized two-robot tuning model:** committed per-robot JSON files are canonical,
-    no transcription (reversed the earlier "test = gitignored scratch" cut)
-  - `73a1ecc` — robot-aware persistence (per-robot tuning/snapshot files, fail-closed); one Limelight
-  - identity work (`RobotIdentity`, loud banner) landed just before that
-  - `2734cd3` — fixed the `maxLoopMs` outlier; earlier same day: Phase 0 closed, TeleOp direction fix
-- **Two-robot model is the big recent design** — read the "Decisions still standing" entry and
-  `CLAUDE.md` §6/§7/§10 before touching tuning/persistence. Key point: canonical tuning = committed
-  per-robot files in `tuning/`; Pedro stays in code constant sets (decided, not yet built).
+- **Repo is on the `snacktime-robotics-34672` GitHub org.** ⚠️ `master` now has a branch-protection
+  rule ("Changes must be made through a pull request"). Aaron's account **bypasses** it on push;
+  Kieran and Elijah may not be able to and would just see a rejection. Either drop the rule or move
+  to PRs — worth settling before a student hits it.
+- **Recent commits** (newest first):
+  - `c150208` — tuning values can no longer vanish silently on restore (the LOADED banner was
+    over-counting, i.e. lying)
+  - `6da2841` — drive-to-position, alliance mirroring, timeouts on every path command
+  - `f6e694d` — stand-your-ground defensive brace
+  - `1122e03` — Pedro constants apply to the running follower; unidentified-hub power cap now holds
+  - `e455e7e` — **switched to the Sloth build of Panels; live tuning works for the first time**
+    (tag `panels-tuning-working` sits on `1122e03`)
+- **Read the Panels/Sloth landmine before touching any dashboard dependency.** It is the single most
+  expensive thing we have hit, and it fails completely silently.
+- **Two-robot model** — read "Decisions still standing" and `CLAUDE.md` §6/§7/§10 before touching
+  tuning/persistence. Canonical tuning = committed per-robot files in `tuning/`; Pedro stays in
+  per-robot code constant sets (now built).
 - **Do not commit unless asked.** Aaron controls when commits happen.

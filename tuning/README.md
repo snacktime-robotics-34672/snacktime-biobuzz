@@ -11,6 +11,15 @@ runs on both robots and loads the right file by hub identity (see `CLAUDE.md` §
 
 The files may not exist yet — they're created the first time you save a robot's tuning.
 
+> **Note (2026-08-30):** live dashboard tuning only started actually working on this date. Before
+> that, Panels edits never reached the robot — so any tuning file written earlier holds in-code
+> defaults, not tuned values. Re-tune from scratch rather than trusting an older file.
+
+> **A value that saves may not restore.** Numbers, true/false, text and menu settings all round-trip.
+> Anything else is reported at init as `*** n NOT RESTORED ***` on the Driver Hub, with the field
+> named in the log. If you see that, the robot is running on the in-code default — don't assume the
+> file's value is live just because it appears in the JSON.
+
 ## Saving a robot's tuning (no transcription — just commit the file)
 After live-tuning in Panels, the robot writes its file to its own hub on stop. **A plain `git commit`
 does NOT back this up** — the values are on the hub, not in the repo yet. You have to pull the file

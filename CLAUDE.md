@@ -87,10 +87,17 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
   at build. Changing this pin is WARN-AND-CONFIRM (§6).
 - **Perception:** Limelight 3A as an on-board coprocessor. All detection runs on the Limelight,
   never on the Control Hub.
-- **Dashboard:** **Panels** (`com.bylazar:fullpanels`) — ships the whole bundle: field view, live
-  graphs, live configurables (§6 Tier 1), capture/replay, Limelight proxy, battery, gamepad.
-  Note stock **FTC Dashboard is also present** and **conflicts with Sloth's modified fork** —
-  see `STATUS.md`.
+- **Dashboard:** **Panels** — ships the whole bundle: field view, live graphs, live configurables
+  (§6 Tier 1), capture/replay, Limelight proxy, battery, gamepad.
+  **MUST be the Sloth fork — `com.bylazar.sloth:fullpanels`, never `com.bylazar:fullpanels`.**
+  Stock Panels finds `@Configurable` classes by scanning the installed APK and resolving each by
+  name, which hands it *its* copy of a class — not the copy Sloth loaded and the robot is running.
+  Two classes, same name, separate values: Panels writes one, the robot reads the other, and nothing
+  errors. That made Tier 1 live tuning silently dead for every tunable until 2026-08-30. The fork
+  registers through Sinister, so Sloth hands it the real class and loader and only one copy exists.
+  Same story for FTC Dashboard: use `com.acmerobotics.slothboard:dashboard`, never the stock one.
+  **After any Panels or Sloth version bump, re-check the canary** (type a number into
+  `PanelsProbe.probe` and watch the Tuning telemetry move) — this failure mode is completely silent.
 - **Fast reload:** Sloth (see §6).
 
 ### Why this stack (decided)
@@ -385,7 +392,15 @@ the code mostly aren't reading it line by line.
 - **Tunables are configurables; logic lives in teamcode.** (see §6)
 - **Every subsystem publishes health telemetry** and has a test OpMode.
 - **Alliance and starting pose are chosen in exactly one place** and passed down — no auto
-  hardcodes its own — so the robot never runs from the wrong pose.
+  hardcodes its own — so the robot never runs from the wrong pose. In practice that place is
+  `AutonMenu.resolve(pose)`: **author every field pose for BLUE and let it derive red.** Never
+  hand-write a red pose — the moment one exists the two alliances drift and you are maintaining two
+  autos. `resolve()` mirrors first, then applies the field tweaks, and that order is load-bearing:
+  mirroring is ideal geometry, the tweaks are corrections measured on a physical field, so nudging
+  first would throw the correction to the wrong side of the field.
+- **Every command has a timeout, built in — not left to the caller.** SolversLib offers
+  `.withTimeout(ms)`, but a safety net you must remember to attach is one you will forget on exactly
+  the path that needed it (§5). Defaults live as configurables; individual moves may override.
 - **Document as you go.** Each subsystem and command has a short comment saying what it does,
   what it owns, and how to tell if it's working.
 - **Consistent naming** matching the hardware map in §10.

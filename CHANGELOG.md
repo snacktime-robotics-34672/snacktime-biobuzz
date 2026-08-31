@@ -20,6 +20,16 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **Docs brought up to date with everything below.** `STATUS.md` had been six weeks stale and still
+  described live tuning as working, which it was not. Updated: the Panels/Sloth two-copies landmine
+  written up in full (it is the most expensive thing we have hit and it fails silently), the
+  dependency table, the Decode carry-over audit, a consolidated open-work list, the file inventory
+  (34 files, 73 tests), and the note that branch protection on `master` may block the students.
+  `CLAUDE.md` §2 now names the Sloth fork as mandatory and §9 records the author-for-blue rule and
+  the built-in-timeout rule. `README.md`, `SETUP.md` and `tuning/README.md` follow.
+  One correction worth flagging: Phase 0 was recorded as complete in July, but the "live tune" leg of
+  the generation-first loop was never actually proven until today. Every other leg was.
+  (`STATUS.md`, `CLAUDE.md`, `README.md`, `SETUP.md`, `tuning/README.md`; CLAUDE.md §12)
 - **A tuned value can no longer disappear on the way back from the tuning file.** Saving a tunable
   always worked, but restoring one only handled numbers and true/false. A text or menu-style setting
   would write to the file, read correctly in the JSON, and then never come back — and the

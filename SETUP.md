@@ -143,7 +143,9 @@ actual files. Install Claude Code, point it at the project folder, and give it r
 > each dependency change**.
 >
 > 1. First run `./gradlew :TeamCode:dependencies` and tell me what's already installed.
-> 2. Install **Panels** (the dashboard) per its current official docs.
+> 2. Install **Panels** (the dashboard). **Use the Sloth fork — `com.bylazar.sloth:fullpanels` from
+>    repo.dairy.foundation — never stock `com.bylazar:fullpanels`.** Stock Panels cannot see
+>    Sloth-loaded classes, which silently kills all live tuning (CLAUDE.md §2, STATUS.md Landmines).
 > 3. Install **Sloth** (hot reload) per its current official docs at
 >    github.com/Dairy-Foundation/Sloth. Note the FTC Dashboard fork nuance — if another library
 >    pulls dashboard via implementation/api, it needs excluding.
