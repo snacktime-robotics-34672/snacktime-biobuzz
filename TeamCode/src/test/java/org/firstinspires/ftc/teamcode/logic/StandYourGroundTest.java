@@ -87,4 +87,23 @@ public class StandYourGroundTest {
         assertEquals(State.DRIVING,
                 StandYourGround.nextState(State.DRIVING, false, true, 30_000, DELAY));
     }
+
+    // ---- Yielding to a path command -----------------------------------------------------------
+
+    @Test
+    public void yieldedEngagesLikeDrivingOnceControlComesBack() {
+        // update() leaves YIELDED as soon as the follower is no longer busy, handing the wheels back
+        // and dropping to DRIVING. Should nextState ever see YIELDED, it must behave like DRIVING —
+        // wait out the settle delay — not resume a brace that was never captured.
+        assertEquals(State.DRIVING,
+                StandYourGround.nextState(State.YIELDED, true, true, 100, DELAY));
+        assertEquals(State.HOLDING,
+                StandYourGround.nextState(State.YIELDED, true, true, 300, DELAY));
+    }
+
+    @Test
+    public void yieldedReleasesOnStickInput() {
+        assertEquals(State.DRIVING,
+                StandYourGround.nextState(State.YIELDED, true, false, 0, DELAY));
+    }
 }

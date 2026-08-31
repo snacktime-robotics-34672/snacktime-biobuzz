@@ -20,6 +20,60 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **Write each auto once, for blue, and the code plays it as red.** Every field pose now goes
+  through `AutonMenu.resolve(...)`, which mirrors it for the alliance the driver picked and then
+  applies that field's measured offsets. **The rule: author every pose for BLUE, never hand-write a
+  red one.** The moment someone writes a red pose by hand the two alliances drift apart and you are
+  maintaining two autos again, which is the whole problem this removes. It is also the "exactly one
+  place" §9 asks for — no auto works out its own alliance or applies its own field offset.
+  Order is fixed and matters: mirror first, nudge second. Mirroring is ideal geometry; the tweaks
+  are corrections measured on a physical field. Nudge first and mirroring would throw the correction
+  to the wrong side of the field — which would show up as a tweak that gets *worse* the more you
+  dial it in, and nobody would guess why.
+  **KICKOFF TASK: set `AllianceMirror.seasonSymmetry` to match the real field, and check it on a
+  real field before trusting an auto to it.** FTC fields are symmetric, but not all the same way —
+  some rotate 180° about the centre, some reflect across a centre line — and the right one is a
+  property of the game. Getting it wrong does not fail loudly; it drives a confident, well-tuned
+  path into the wrong quarter of the field. It is a code constant, not a dashboard knob, because it
+  is decided once and must never differ between what is committed and what is running.
+  Eight off-robot tests pin the transforms, including that mirroring twice returns the original —
+  so a double-mirror bug shows up as a no-op instead of a wrong spot.
+  (`util/AllianceMirror.java`, `opmodes/AutonMenu.java`; CLAUDE.md §6, §9)
+- **Path commands can no longer hang the robot for a whole match.** `FollowPathCommand` finished
+  only when Pedro said it was no longer busy, so a path that never completes — a stall against a
+  wall, a bad pose estimate, a robot wedged on another — would hold up the command tree for the rest
+  of the match. §5 does not allow that, and this was the last command without a timeout. It now
+  stops the robot and logs where it gave up. Defaults live on `Drivetrain`:
+  `followPathTimeoutSec` (15 s, since one timeout covers a whole multi-segment chain) and
+  `driveToPoseTimeoutSec` (5 s), both live-tunable, both overridable per move with `.setTimeout()`.
+  This is a deliberate divergence from the upstream Powercube wrapper we ported. SolversLib does
+  offer `.withTimeout(ms)` on any command, but a safety net you have to remember to attach is one
+  you will forget on exactly the path that needed it.
+  (`commands/FollowPathCommand.java`, `subsystems/Drivetrain.java`; CLAUDE.md §5, §6 Tier 1)
+- **Drive-to-position: a command that sends the robot to a spot on the field from wherever it is.**
+  Drop `new DriveToPoseCommand(follower, SCORING_POSE)` into a command tree and the robot drives a
+  straight line there, turning as it goes, and holds the spot when it arrives. The last Decode
+  capability we were missing.
+  Why this is not just `FollowPathCommand`: a Pedro path has its start point baked in from when the
+  path was built. That is fine for an auto whose whole route is planned up front, and wrong for "go
+  there from wherever you are" — after a knock, a missed grab, or a driver handoff, the robot is not
+  where the plan assumed. This command builds its path **at the moment it runs**, from the live
+  pose. That is the whole idea. The target can also be a supplier, so a spot that is not known when
+  the tree is built — a camera result, an alliance-dependent position — still works.
+  **The timeout is built in, not optional** (§5): five seconds by default, live-tunable via
+  `Drivetrain.driveToPoseTimeoutSec`, overridable per move. Hitting it means the robot did not get
+  there, so it stops and logs how far short it ended up rather than failing quietly.
+  Guards a real trap: asking it to drive to where the robot already stands would hand Pedro a
+  zero-length path, and Pedro computes `1 / length` when it sets one up — infinity, and a NaN
+  direction. Inside half an inch it skips the path entirely and just squares up on the target
+  heading. Eight off-robot tests cover the geometry and that guard.
+  **Stand-your-ground now yields to it.** Without that the two would fight in TeleOp: sticks are
+  idle while the robot auto-drives, so the brace would grab the wheels mid-move. The brace now
+  stands aside whenever a path is running, then takes the wheels back when it finishes — and the
+  Driver Hub shows which of the three is happening (`manual`, `HOLDING (braced)`,
+  `AUTO (driving to a spot)`). 56 tests total, all passing.
+  (`commands/DriveToPoseCommand.java`, `util/StandYourGround.java`, `subsystems/Drivetrain.java`,
+  `opmodes/TeleOpExample.java`; CLAUDE.md §3, §5, §6 Tier 1, §8, §9)
 - **Stand your ground: the robot now braces when the driver lets go.** Release the sticks and it
   captures where it is and actively fights to stay there, so an opponent trying to shove us off a
   scoring spot gets pushed back instead of moving us. Touch a stick and it hands control straight

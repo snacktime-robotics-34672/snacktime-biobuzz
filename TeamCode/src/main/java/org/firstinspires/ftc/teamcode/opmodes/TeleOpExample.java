@@ -129,8 +129,8 @@ public class TeleOpExample extends CommandOpMode {
         // coasting, so a push does not move us. Touch a stick and it hands control straight back.
         // While holding, Pedro is driving the wheels to the held pose, so issuing a manual drive
         // command would be fighting it — hence the branch rather than an unconditional call.
-        boolean holding = standYourGround.update(follower, forward, strafe, turn);
-        if (!holding) {
+        boolean autoControlled = standYourGround.update(follower, forward, strafe, turn);
+        if (!autoControlled) {
             follower.setTeleOpDrive(forward * cap, strafe * cap, turn * cap, false);
         }
         follower.update();
@@ -182,7 +182,7 @@ public class TeleOpExample extends CommandOpMode {
         // Current mode, which §8 asks for on the Driver Hub — a driver needs to know at a glance
         // whether the robot is braced or free, because the two feel very different on the sticks.
         // Constant strings, so no per-loop allocation (§4 rule 8).
-        telemetry.addData("Drive", holding ? "HOLDING (braced)" : "manual");
+        telemetry.addData("Drive", driveModeLabel(standYourGround.getState()));
         telemetry.addData("Loop Hz", loopTimer.getHz());
         telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
         telemetry.addData("X in", follower.getPose().getX());
@@ -208,6 +208,18 @@ public class TeleOpExample extends CommandOpMode {
         panelsField.setStyle(robotLook);
         panelsField.moveCursor(pose.getX() + v.getXComponent() / 2, pose.getY() + v.getYComponent() / 2);
         panelsField.line(pose.getX() + v.getXComponent(), pose.getY() + v.getYComponent());
+    }
+
+    /**
+     * Driver-facing name for the drive mode. Constant strings, so no per-loop allocation (§4 rule 8).
+     * A driver needs this at a glance: the three modes feel completely different on the sticks.
+     */
+    private static String driveModeLabel(StandYourGround.State state) {
+        switch (state) {
+            case HOLDING: return "HOLDING (braced)";
+            case YIELDED: return "AUTO (driving to a spot)";
+            default:      return "manual";
+        }
     }
 
     /** Returns 0 if |value| is within the deadzone, otherwise passes value through unchanged. */

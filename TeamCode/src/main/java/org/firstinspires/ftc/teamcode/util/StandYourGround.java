@@ -39,7 +39,12 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
  */
 public class StandYourGround {
 
-    public enum State { DRIVING, HOLDING }
+    /**
+     * DRIVING — the driver has the wheels. HOLDING — we are braced on a captured pose.
+     * YIELDED — something else is driving the follower along a path (a {@code DriveToPoseCommand},
+     * say), so the brace stands aside and touches nothing until that finishes.
+     */
+    public enum State { DRIVING, HOLDING, YIELDED }
 
     private State state = State.DRIVING;
 
@@ -91,10 +96,27 @@ public class StandYourGround {
      * Advances the brace one loop. Call once per loop with the post-deadzone stick values, BEFORE
      * {@code follower.update()}.
      *
-     * @return true if the robot is holding, meaning the caller must NOT issue a manual drive command
-     *         this loop — Pedro is driving the wheels back to the held pose instead.
+     * @return true if the caller must NOT issue a manual drive command this loop, because something
+     *         else is driving the wheels — either this brace, or a path command we yielded to.
      */
     public boolean update(Follower follower, double forward, double strafe, double turn) {
+        // A path command owns the follower. Stand aside and touch nothing: calling holdPoint or
+        // startTeleopDrive here would break the path out from under it. isBusy() is true only while
+        // following a path — our own hold sets it false — so this cannot be tripped by the brace.
+        if (follower.isBusy()) {
+            heldPose = null;
+            idle = false; // restart the settle delay once we get control back
+            state = State.YIELDED;
+            return true;
+        }
+
+        if (state == State.YIELDED) {
+            // The path finished. Pedro turned manual drive off when it took over, so hand the wheels
+            // back before anything reads a stick this loop.
+            follower.startTeleopDrive();
+            state = State.DRIVING;
+        }
+
         boolean inputsIdle = inputsAreIdle(forward, strafe, turn);
 
         long now = System.nanoTime();

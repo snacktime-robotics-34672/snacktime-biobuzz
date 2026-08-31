@@ -42,6 +42,16 @@ public class Drivetrain extends SubsystemBase {
     // leave it on if the robot jitters or hunts around the held pose.
     public static boolean holdUseScaling = true;
 
+    // Default timeout for DriveToPoseCommand, in seconds. Every command needs a timeout so nothing
+    // can hang the robot for a whole match (§5). A single move that takes longer than this has gone
+    // wrong — the command stops the robot and logs it. Individual moves can override with
+    // .setTimeout(); raise this if a legitimately long drive keeps tripping it.
+    public static double driveToPoseTimeoutSec = 5.0;
+
+    // Same idea for FollowPathCommand, but longer: one timeout covers a whole PathChain, which may
+    // be several segments. Override per-path with .setTimeout() for a genuinely long route.
+    public static double followPathTimeoutSec = 15.0;
+
     // Heading-hold PIDF for TeleOp — resists drift when driver isn't turning.
     // TUNE ORDER: enable, raise headingP until it resists; add headingD if it oscillates; leave headingI at 0.
     public static boolean headingCorrectionEnabled    = false;

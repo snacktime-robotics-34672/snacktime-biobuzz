@@ -1,9 +1,13 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.MathFunctions;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.config.AutonFieldTweaks;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
+import org.firstinspires.ftc.teamcode.util.AllianceMirror;
 import org.firstinspires.ftc.teamcode.util.TelemetryMenu;
 
 /**
@@ -86,5 +90,37 @@ public class AutonMenu {
     /** Convenience: fetch the tweaks for the currently-selected alliance + field. */
     public org.firstinspires.ftc.teamcode.config.AutonFieldTweaks getFieldTweaks() {
         return FieldTweaks.lookup(getAlliance() == Alliance.RED, getField());
+    }
+
+    public boolean isRed() {
+        return getAlliance() == Alliance.RED;
+    }
+
+    /**
+     * Turns a pose you wrote into the pose the robot should actually drive to today. **Every auto
+     * pose goes through here.** This is the "exactly one place" §9 asks for — no auto works out its
+     * own alliance, and none applies its own field offset.
+     *
+     * Two steps, in this order and only this order:
+     *   1. MIRROR for the alliance. You author for BLUE; red is derived (see {@link AllianceMirror}).
+     *   2. NUDGE by the tweaks for this field and alliance — the small real-world corrections for a
+     *      field whose tiles are not quite where the drawing says.
+     *
+     * The order matters. Mirroring is ideal geometry; the tweaks are corrections measured on a
+     * physical field in real field coordinates. Nudge first and mirroring would flip the correction
+     * to the wrong side of the field, which would look like a tweak that makes things worse the more
+     * you dial it in.
+     *
+     * @param authoredForBlue a field pose as written for the BLUE alliance
+     */
+    public Pose resolve(Pose authoredForBlue) {
+        Pose mirrored = AllianceMirror.forAlliance(authoredForBlue, isRed());
+        AutonFieldTweaks tweaks = getFieldTweaks();
+
+        return new Pose(
+                mirrored.getX() + tweaks.xOffsetInches,
+                mirrored.getY() + tweaks.yOffsetInches,
+                MathFunctions.normalizeAngle(
+                        mirrored.getHeading() + Math.toRadians(tweaks.headingOffsetDeg)));
     }
 }
