@@ -7,7 +7,6 @@ import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.follower;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.stopRobot;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.telemetryM;
 
-import com.bylazar.configurables.PanelsConfigurables;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.configurables.annotations.IgnoreConfigurable;
 import com.bylazar.field.FieldManager;
@@ -15,6 +14,7 @@ import com.bylazar.field.PanelsField;
 import com.bylazar.field.Style;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.pedropathing.control.PIDFCoefficients;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.*;
 import com.pedropathing.math.*;
@@ -24,6 +24,7 @@ import com.pedropathing.util.PoseHistory;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.diagnostics.PanelsProbe;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 import java.util.ArrayList;
@@ -38,6 +39,14 @@ import java.util.List;
 @Configurable
 @TeleOp(name = "Tuning", group = "Pedro Pathing")
 public class Tuning extends SelectableOpMode {
+    // @IgnoreConfigurable is REQUIRED here, not tidiness. Panels walks every public static field on
+    // an @Configurable class and recurses into whatever it finds. A Follower is not a tunable value —
+    // it is the whole runtime object graph (localizer, drivetrain, VectorCalculator, every
+    // PIDFController, paths, pose history). Letting Panels descend into it registered ~4000 fields and
+    // crowded out the classes we actually tune: Constants never made it into the registry, so every
+    // edit to a Pedro PIDF was looked up, not found, and dropped WITHOUT any error in the dashboard.
+    // The values still rendered, which is what made this so hard to see. Keep this annotation.
+    @IgnoreConfigurable
     public static Follower follower;
 
     @IgnoreConfigurable
@@ -54,6 +63,11 @@ public class Tuning extends SelectableOpMode {
     // for the whole suite at once, rather than wiring each OpMode individually.
     @IgnoreConfigurable
     static String idBanner;
+
+    // Kept so drawCurrent() knows which robot's constant set to push into the follower each loop.
+    // Resolved once in onSelect(), never re-read — the hub name cannot change while an OpMode runs.
+    @IgnoreConfigurable
+    static RobotIdentity robotId;
 
     public Tuning() {
         super("Select a Tuning OpMode", s -> {
@@ -90,14 +104,16 @@ public class Tuning extends SelectableOpMode {
         // picks which robot's Pedro constants the follower is built from, and it feeds the banner
         // that drawCurrent() emits every loop across the whole tuning suite.
         RobotIdentity id = RobotIdentity.resolve();
+        robotId = id;
         idBanner = id.banner();
 
-        if (follower == null) {
-            follower = Constants.createFollower(hardwareMap, id);
-            PanelsConfigurables.INSTANCE.refreshClass(this);
-        } else {
-            follower = Constants.createFollower(hardwareMap, id);
-        }
+        follower = Constants.createFollower(hardwareMap, id);
+
+        // No refreshClass() call here on purpose. The Sloth build of Panels registers a class when
+        // Sloth loads it, so Constants is already registered against this exact classloader by the
+        // time we get here. A refresh would only rebuild the dashboard's field ids, which orphans
+        // the ids an already-open browser tab is holding — turning edits back into silent no-ops,
+        // the very failure this all started with.
 
         follower.setStartingPose(new Pose());
 
@@ -110,7 +126,19 @@ public class Tuning extends SelectableOpMode {
     @Override
     public void onLog(List<String> lines) {}
 
+    /**
+     * Pushes Panels edits into the running follower, then draws the robot.
+     *
+     * WHY THE APPLY LIVES HERE: {@code SelectableOpMode.loop()} is final, so Tuning cannot wrap the
+     * selected tuner's loop and do this in one obvious place. drawCurrent() is the one call every
+     * tuner in this file already makes each loop, in both init_loop() and loop(), so it is the only
+     * seam that reaches the whole suite at once. Same reason the identity banner lives here.
+     */
     public static void drawCurrent() {
+        // First, before anything below reads the follower. Outside the try/catch on purpose: a
+        // failure to apply tuning is not a drawing failure and must not be reported as one.
+        Constants.applyLive(follower, robotId);
+
         try {
             // Queued here (not flushed) — each sub-OpMode's own telemetryM.update(telemetry) call
             // does the actual send, same as every other debug() line in this file already works.
@@ -120,6 +148,19 @@ public class Tuning extends SelectableOpMode {
             // try/catch as the drawing below now, so a null/unready telemetryM can't take down
             // drawing (they were previously independent; a failure in one shouldn't crash the other).
             telemetryM.debug(idBanner);
+            // Read STRAIGHT off the follower's own constants object — not off Constants.java. This is
+            // the authoritative set the follower was actually built from, so if you edit a PIDF in
+            // Panels and this line does not move, you are editing a set this robot is not using
+            // (e.g. testFollowerConstants while the hub resolved to COMPETITION). The banner above
+            // names which robot resolved. Bench tool, so the string build per loop is acceptable here.
+            //
+            PIDFCoefficients headingPIDF = follower.getConstants().coefficientsHeadingPIDF;
+            telemetryM.debug("Heading PIDF (live, in use): " + headingPIDF);
+            // The canary. One bare double, nothing between it and the dashboard, so if live tuning
+            // ever breaks again this is the fastest way to see it: type a number into
+            // PanelsProbe.probe in Panels and this line should move on the next loop. Keeping it
+            // costs one telemetry line and saves re-deriving a whole session of diagnosis.
+            telemetryM.debug("Panels canary (PanelsProbe.probe): " + PanelsProbe.probe);
             Drawing.drawRobot(follower.getPose());
             Drawing.sendPacket();
         } catch (Exception e) {
@@ -346,7 +387,7 @@ class TurnTuner extends OpMode {
  */
 class ForwardVelocityTuner extends OpMode {
     private final ArrayList<Double> velocities = new ArrayList<>();
-    public static double DISTANCE = 48;
+    public static double DISTANCE = 60;
     public static double RECORD_NUMBER = 10;
 
     private boolean end;
@@ -453,7 +494,7 @@ class ForwardVelocityTuner extends OpMode {
 class LateralVelocityTuner extends OpMode {
     private final ArrayList<Double> velocities = new ArrayList<>();
 
-    public static double DISTANCE = 48;
+    public static double DISTANCE = 60;
     public static double RECORD_NUMBER = 10;
 
     private boolean end;
@@ -467,7 +508,7 @@ class LateralVelocityTuner extends OpMode {
      */
     @Override
     public void init_loop() {
-        telemetryM.debug("The robot will run at 1 power until it reaches " + DISTANCE + " inches to the right.");
+        telemetryM.debug("The robot will run at 1 power until it reaches " + DISTANCE + " inches to the robot left.");
         telemetryM.debug("Make sure you have enough room, since the robot has inertia after cutting power.");
         telemetryM.debug("After running the distance, the robot will cut power from the drivetrain and display the strafe velocity.");
         telemetryM.debug("Press B on Gamepad 1 to stop.");

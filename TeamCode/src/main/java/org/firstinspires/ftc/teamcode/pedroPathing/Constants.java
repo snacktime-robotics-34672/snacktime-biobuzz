@@ -49,10 +49,16 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *   - FollowerConstants (PIDF gains, mass, zero-power accelerations, centripetal scaling) — LIVE.
  *     Pedro's VectorCalculator re-reads the whole FollowerConstants object every loop, so a value you
  *     change in Panels takes effect on the very next cycle. This is the set you actually tune.
- *   - MecanumConstants xVelocity / yVelocity — LIVE (Pedro reads them on demand). The rest of that
- *     set — maxPower, motor names, directions — is copied at construction and does NOT change live.
+ *   - MecanumConstants xVelocity / yVelocity / maxPower — LIVE, but only because {@link #applyLive}
+ *     pushes them in each loop. Motor names and directions are wiring, not tuning; leave them alone.
+ *   - frontLeftVector — NOT live. The drivetrain bakes it into its own wheel vectors when it is
+ *     built, so re-init the OpMode after you change the drive velocities.
  *   - PinpointConstants (pod offsets) — NOT live. The localizer reads them once when it is built.
  *     Change one and you must restart the OpMode to see any effect.
+ *
+ * A running OpMode only picks up live edits if it calls {@link #applyLive} each loop. The Tuning
+ * suite does; match OpModes deliberately do not, because that is per-loop cost for a knob nobody
+ * turns mid-match (CLAUDE.md §0).
  *
  * Panels shows all three sets (comp / test / fallback). Turn the knobs for the robot you are ON —
  * the Tuning banner names it. Editing comp's gains while standing at the test bot changes nothing.
@@ -113,10 +119,10 @@ public class Constants {
             .mass(6.5);
 
     /** Test-bot drive velocities. TODO: run ForwardVelocityTuner and LateralVelocityTuner. */
-    public static MecanumConstants testMecanumConstants = mecanumFor(81.34056, 65.43028, 1.0);
+    public static MecanumConstants testMecanumConstants = mecanumFor(78.27354, 61.582, 1.0);
 
     /** Test-bot Pinpoint pod offsets. See the note on {@link #compPinpointConstants}. */
-    public static PinpointConstants testPinpointConstants = pinpointFor(5.914, -1.228);
+    public static PinpointConstants testPinpointConstants = pinpointFor(4.3823, -2.1985);
 
     // ===================================================================================
     // UNKNOWN HUB — fail closed (CLAUDE.md §5, §6)
@@ -147,29 +153,14 @@ public class Constants {
      *                    than resolving here, so one OpMode reads the hub name exactly once
      */
     public static Follower createFollower(HardwareMap hardwareMap, RobotIdentity id) {
-        FollowerConstants follower;
-        MecanumConstants drivetrain;
-        PinpointConstants localizer;
+        FollowerConstants follower = followerConstantsFor(id);
+        MecanumConstants drivetrain = mecanumConstantsFor(id);
+        PinpointConstants localizer = pinpointConstantsFor(id);
 
-        switch (id.robot) {
-            case COMPETITION:
-                follower = compFollowerConstants;
-                drivetrain = compMecanumConstants;
-                localizer = compPinpointConstants;
-                break;
-            case TESTBOT:
-                follower = testFollowerConstants;
-                drivetrain = testMecanumConstants;
-                localizer = testPinpointConstants;
-                break;
-            default:
-                follower = fallbackFollowerConstants;
-                drivetrain = fallbackMecanumConstants;
-                localizer = fallbackPinpointConstants;
-                RobotLog.ww("PedroConstants", "UNKNOWN robot (name=\"%s\") — using untuned fallback "
-                        + "Pedro constants at %.2f max power. Path following will be inaccurate.",
-                        id.networkName, fallbackMecanumConstants.maxPower);
-                break;
+        if (!id.isKnown()) {
+            RobotLog.ww("PedroConstants", "UNKNOWN robot (name=\"%s\") — using untuned fallback "
+                    + "Pedro constants at %.2f max power. Path following will be inaccurate.",
+                    id.networkName, drivetrain.maxPower);
         }
 
         RobotLog.ii("PedroConstants", "follower built for %s: mass=%.2f kg, xVel=%.3f, yVel=%.3f, "
@@ -177,11 +168,102 @@ public class Constants {
                 id.robot, follower.mass, drivetrain.xVelocity, drivetrain.yVelocity,
                 localizer.forwardPodY, localizer.strafePodX);
 
-        return new FollowerBuilder(follower, hardwareMap)
+        Follower built = new FollowerBuilder(follower, hardwareMap)
                 .mecanumDrivetrain(drivetrain)
                 .pinpointLocalizer(localizer)
                 .pathConstraints(pathConstraints)
                 .build();
+
+        // Make maxPower real. The drivetrain copies it once when it is built, but followPath() then
+        // resets the drivetrain back to the follower's own globalMaxPower — which is 1 until someone
+        // sets it. That is how an UNKNOWN hub's half-power cap silently disappears the first time a
+        // path runs. setMaxPower() writes both, so the cap holds.
+        built.setMaxPower(drivetrain.maxPower);
+        lastAppliedMaxPower = drivetrain.maxPower;
+
+        return built;
+    }
+
+    /** This robot's follower tuning set. Read fresh on every call, so a Panels edit is never cached. */
+    public static FollowerConstants followerConstantsFor(RobotIdentity id) {
+        switch (id.robot) {
+            case COMPETITION: return compFollowerConstants;
+            case TESTBOT:     return testFollowerConstants;
+            default:          return fallbackFollowerConstants;
+        }
+    }
+
+    /** This robot's drive velocities and power cap. */
+    public static MecanumConstants mecanumConstantsFor(RobotIdentity id) {
+        switch (id.robot) {
+            case COMPETITION: return compMecanumConstants;
+            case TESTBOT:     return testMecanumConstants;
+            default:          return fallbackMecanumConstants;
+        }
+    }
+
+    /** This robot's Pinpoint pod offsets. */
+    public static PinpointConstants pinpointConstantsFor(RobotIdentity id) {
+        switch (id.robot) {
+            case COMPETITION: return compPinpointConstants;
+            case TESTBOT:     return testPinpointConstants;
+            default:          return fallbackPinpointConstants;
+        }
+    }
+
+    // ===================================================================================
+    // Live tuning — push Panels edits into a follower that is already running
+    // ===================================================================================
+
+    /**
+     * The maxPower {@link #applyLive} last pushed into the follower. Reset whenever a follower is
+     * built. It exists so applyLive() writes maxPower only when you actually turn that knob: a blind
+     * write every loop would stomp on a per-path max power that followPath() had set.
+     */
+    private static double lastAppliedMaxPower = Double.NaN;
+
+    /**
+     * Pushes this robot's constants into a follower that is already running, so a number typed in
+     * Panels changes how the robot drives on the next loop instead of at the next OpMode restart.
+     * Call it once per loop from a tuning OpMode.
+     *
+     * This is a bench tool. It costs a handful of field reads and writes per loop — fine while
+     * tuning, but it does not belong in a match loop (CLAUDE.md §0).
+     *
+     * WHY MOST OF IT IS ALREADY A NO-OP (checked against Pedro 2.1.2 and Panels configurables
+     * 1.0.5): Panels writes a value by reflection, straight into the object that owns the field. It
+     * never builds a replacement object. Pedro re-reads its whole FollowerConstants every loop
+     * through the reference it captured when the follower was built. Same object on both sides, so
+     * a PIDF gain or a mass already reaches the robot on its own. What this method adds is the
+     * parts where that is not true:
+     *
+     *   - maxPower was never applied at all. See the note in {@link #createFollower}.
+     *   - Drive velocities are pushed BY VALUE, not by swapping a reference, because the drivetrain
+     *     gives us no way to re-point it at a different MecanumConstants object. Writing through the
+     *     follower lands on whatever object the drivetrain is actually reading.
+     *   - The references themselves. Nothing in Panels replaces an object today, but a hot reload
+     *     can, and that failure is silent: the dashboard shows the new object while the robot keeps
+     *     driving on the old one. The identity checks below cost nothing and close that door.
+     *
+     * STILL NOT LIVE, by construction — change these and re-init the OpMode:
+     *   - Pinpoint pod offsets. The localizer reads them once, when it is built.
+     *   - frontLeftVector. The drivetrain bakes it into its own wheel vectors at construction, so a
+     *     new xVelocity/yVelocity pair does not reshape it. Re-init after tuning the velocities.
+     */
+    public static void applyLive(Follower follower, RobotIdentity id) {
+        FollowerConstants live = followerConstantsFor(id);
+        MecanumConstants drive = mecanumConstantsFor(id);
+
+        if (follower.getConstants() != live) follower.setConstants(live);
+        if (follower.getConstraints() != pathConstraints) follower.setConstraints(pathConstraints);
+
+        follower.setXVelocity(drive.xVelocity);
+        follower.setYVelocity(drive.yVelocity);
+
+        if (drive.maxPower != lastAppliedMaxPower) {
+            follower.setMaxPower(drive.maxPower);
+            lastAppliedMaxPower = drive.maxPower;
+        }
     }
 
     // ===================================================================================

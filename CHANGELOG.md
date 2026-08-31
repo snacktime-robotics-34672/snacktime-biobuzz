@@ -20,6 +20,20 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **Panels edits to the Pedro constants now reach the running robot, every loop.** The tuning
+  OpModes built the follower once at init and never looked at `Constants.java` again, so some values
+  you turned in Panels changed nothing until you re-selected the OpMode. The tuning suite now pushes
+  this robot's constant set into the live follower on every loop. Most PIDF gains were already
+  getting through — Pedro re-reads its follower constants each cycle, and Panels edits the value in
+  place rather than building a replacement — but three things were not: the **max power cap**, which
+  was never applied at all, the **drive velocities**, which needed pushing by value, and any case
+  where the object itself gets replaced (a hot reload can do this), which used to fail silently with
+  the dashboard showing one set of numbers and the robot driving on another. Also fixes a real
+  safety hole this uncovered: an **unidentified hub's half-power cap was thrown away** the first
+  time it followed a path, so a robot we could not identify would drive at full power on tuning that
+  may not be its own. Pod offsets and the wheel-direction vector still need a re-init — the file and
+  the tuner both say so. Bench-only cost: match OpModes do not do this.
+  (`pedroPathing/Constants.java`, `pedroPathing/Tuning.java`; CLAUDE.md §0, §5, §6 Tier 1)
 - **DEPENDENCY CHANGE (approved by Aaron): switched to the Sloth build of Panels. Live tuning now
   works — it never had.** Turning any value in the dashboard did nothing, on any class: not the
   Pedro constants, not `Drivetrain`, not `TuningConfig`. The cause was neither the dashboard nor our
@@ -40,11 +54,20 @@ one-command rollback target is easy to find later.
   next loop. If it ever stops moving after a version bump, live tuning is silently dead again and
   that line is the only warning you will get.
   (`TeamCode/build.gradle`, `diagnostics/PanelsProbe.java`, `pedroPathing/Tuning.java`,
-  `pedroPathing/Constants.java`; CLAUDE.md §6 Tier 1 + "changing a library", §14)
+  `pedroPathing/Constants.java`; CLAUDE.md §6 Tier 1 + "changing a library", §14;
+  **tag: `panels-tuning-working`** — first build where dashboard tuning reaches the robot, confirmed
+  on the test bot. Roll back here for anything Panels- or tuning-related.)
 - **TeleOp and Autonomous can now be tuned from the dashboard while they run**, and it costs nothing
   per loop. Panels writes straight into the same statics the loop already reads, so no copying,
   no flag, and no extra work in either OpMode — the Tier 1 promise finally works as written.
   (`opmodes/TeleOpExample.java`, `opmodes/AutonomousExample.java`; CLAUDE.md §0, §6 Tier 1)
+- **The tuning OpModes now show the heading PIDF values actually in use.** Editing a PIDF in Panels
+  and seeing no change on the robot had no way to be diagnosed, because Panels shows all three
+  constant sets (comp / test / fallback) at once and gives no hint which one this robot is running.
+  Editing the wrong set is silent. The tuning suite now prints the live heading PIDF read straight
+  off the follower's own constants object, next to the robot-identity banner — so if you type a value
+  in Panels and that line does not move, you are editing a set this robot is not using.
+  (`pedroPathing/Tuning.java`; CLAUDE.md §6 "two robots, one codebase", §8)
 - **TeleOp now draws the robot on the Panels field view.** The dot on the field graphic never moved
   while driving, even though the X/Y/heading numbers in telemetry were correct — those are two
   different channels, and only the numbers were being sent. Added the same field-draw call the Pedro
