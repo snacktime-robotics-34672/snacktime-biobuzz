@@ -20,6 +20,19 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-08-30
+- **A tuned value can no longer disappear on the way back from the tuning file.** Saving a tunable
+  always worked, but restoring one only handled numbers and true/false. A text or menu-style setting
+  would write to the file, read correctly in the JSON, and then never come back — and the
+  `LOADED ... N values` banner counted it as restored anyway, so the one message meant to prove the
+  tuning loaded was quietly wrong. The robot would run on the code default while the file and the
+  dashboard both showed the tuned number. Nothing was affected yet because every tunable today is a
+  number or a switch, but the first menu-style setting at kickoff would have hit it.
+  Text and menu settings now restore properly, and **anything still unsupported says so loudly** —
+  named in the log with its type, and counted on the Driver Hub as `*** n NOT RESTORED ***`. A
+  setting whose choices were renamed since the file was written keeps the code default and reports
+  it rather than guessing. Nine off-robot tests cover every supported type and both failure paths
+  (73 total, all passing).
+  (`util/Persistence.java`; CLAUDE.md §5 fail loud, §7, §9)
 - **Write each auto once, for blue, and the code plays it as red.** Every field pose now goes
   through `AutonMenu.resolve(...)`, which mirrors it for the alliance the driver picked and then
   applies that field's measured offsets. **The rule: author every pose for BLUE, never hand-write a

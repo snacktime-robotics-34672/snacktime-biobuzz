@@ -251,6 +251,7 @@ public final class Persistence {
             if (values == null || values.isEmpty()) return false;
 
             int applied = 0;
+            int skipped = 0;
             for (Class<?> cls : TUNING_CLASSES) {
                 String prefix = cls.getSimpleName() + ".";
                 for (Field f : cls.getDeclaredFields()) {
@@ -259,9 +260,25 @@ public final class Persistence {
                     Object val = values.get(prefix + f.getName());
                     if (val == null) continue;
                     try {
-                        applyToField(f, val);
-                        applied++;
-                    } catch (Exception ignored) { }
+                        if (applyToField(f, val)) {
+                            applied++;
+                        } else {
+                            // A tunable we can save but cannot restore. Never let this pass quietly:
+                            // the robot would run on a code default while the file and the dashboard
+                            // both showed the tuned number (§5 fail loud, §7 "it is loud").
+                            skipped++;
+                            RobotLog.ee("Persistence", "tuning NOT restored: %s%s is a %s, which "
+                                            + "applyToField does not handle — running on the code "
+                                            + "default instead",
+                                    prefix, f.getName(), f.getType().getSimpleName());
+                        }
+                    } catch (Exception e) {
+                        // Most likely an enum constant that was renamed or removed since the file
+                        // was written. Keeping the code default is the safe direction, but say so.
+                        skipped++;
+                        RobotLog.ee("Persistence", "tuning NOT restored: %s%s — %s",
+                                prefix, f.getName(), e);
+                    }
                 }
             }
 
@@ -269,6 +286,11 @@ public final class Persistence {
                     .format(new Date(file.lastModified()));
             String msg = String.format(Locale.US,
                     "LOADED %s TUNING (%s, %s) — %d values", id.robot, fileName, timestamp, applied);
+            if (skipped > 0) {
+                // On the Driver Hub too, not just the log. A value that saved but did not restore
+                // means the robot is running on something other than what the file says.
+                msg += String.format(Locale.US, "  *** %d NOT RESTORED — see log ***", skipped);
+            }
             telemetry.addLine(msg);
             RobotLog.i("Persistence: %s", msg);
             return true;
@@ -318,18 +340,44 @@ public final class Persistence {
     /**
      * Applies a GSON-deserialized value to a tunable static field.
      * GSON always deserializes JSON numbers as Double, so we convert to the field's actual type.
+     *
+     * SAVING ALWAYS WORKS — {@code captureTuningInto} just calls {@code f.get(null)} and GSON
+     * writes whatever it finds. Restoring is the half that has to know the type, so this is the only
+     * place a tunable can go missing. It used to fall off the end of the if-chain and return
+     * silently, which meant an unsupported type would save to the file, look right in the JSON, and
+     * never come back — while the "LOADED ... N values" banner counted it as restored. Returning a
+     * result instead lets the caller both count honestly and say something.
+     *
+     * Public only so it can be unit-tested off the robot (§9), same as the file-name helpers above.
+     *
+     * @return true if the value was applied; false if this field's type is not supported
      */
-    private static void applyToField(Field f, Object val) throws IllegalAccessException {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static boolean applyToField(Field f, Object val) throws IllegalAccessException {
         Class<?> type = f.getType();
+
         if (type == double.class || type == Double.class) {
             f.set(null, ((Number) val).doubleValue());
+        } else if (type == float.class || type == Float.class) {
+            f.set(null, ((Number) val).floatValue());
         } else if (type == boolean.class || type == Boolean.class) {
             f.set(null, (Boolean) val);
         } else if (type == long.class || type == Long.class) {
             f.set(null, ((Number) val).longValue());
         } else if (type == int.class || type == Integer.class) {
             f.set(null, ((Number) val).intValue());
+        } else if (type == String.class) {
+            f.set(null, String.valueOf(val));
+        } else if (type.isEnum()) {
+            // GSON writes an enum as its constant name. valueOf throws if the constant was renamed
+            // or removed since the file was written — the caller logs that and keeps the code
+            // default, which is the safe direction.
+            f.set(null, Enum.valueOf((Class<Enum>) type, String.valueOf(val)));
+        } else {
+            return false;
         }
+
+        return true;
     }
 
     /** Extracts "port X" from raw SDK connection strings like "USB (embedded); module 173; port 0". */
