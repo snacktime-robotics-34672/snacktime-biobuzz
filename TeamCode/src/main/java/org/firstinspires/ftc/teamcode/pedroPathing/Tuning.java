@@ -14,7 +14,6 @@ import com.bylazar.field.PanelsField;
 import com.bylazar.field.Style;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
-import com.pedropathing.control.PIDFCoefficients;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.*;
 import com.pedropathing.math.*;
@@ -24,7 +23,6 @@ import com.pedropathing.util.PoseHistory;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.diagnostics.PanelsProbe;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 import java.util.ArrayList;
@@ -148,19 +146,6 @@ public class Tuning extends SelectableOpMode {
             // try/catch as the drawing below now, so a null/unready telemetryM can't take down
             // drawing (they were previously independent; a failure in one shouldn't crash the other).
             telemetryM.debug(idBanner);
-            // Read STRAIGHT off the follower's own constants object — not off Constants.java. This is
-            // the authoritative set the follower was actually built from, so if you edit a PIDF in
-            // Panels and this line does not move, you are editing a set this robot is not using
-            // (e.g. testFollowerConstants while the hub resolved to COMPETITION). The banner above
-            // names which robot resolved. Bench tool, so the string build per loop is acceptable here.
-            //
-            PIDFCoefficients headingPIDF = follower.getConstants().coefficientsHeadingPIDF;
-            telemetryM.debug("Heading PIDF (live, in use): " + headingPIDF);
-            // The canary. One bare double, nothing between it and the dashboard, so if live tuning
-            // ever breaks again this is the fastest way to see it: type a number into
-            // PanelsProbe.probe in Panels and this line should move on the next loop. Keeping it
-            // costs one telemetry line and saves re-deriving a whole session of diagnosis.
-            telemetryM.debug("Panels canary (PanelsProbe.probe): " + PanelsProbe.probe);
             Drawing.drawRobot(follower.getPose());
             Drawing.sendPacket();
         } catch (Exception e) {
@@ -508,7 +493,7 @@ class LateralVelocityTuner extends OpMode {
      */
     @Override
     public void init_loop() {
-        telemetryM.debug("The robot will run at 1 power until it reaches " + DISTANCE + " inches to the robot left.");
+        telemetryM.debug("The robot will run at 1 power until it reaches " + DISTANCE + " inches to the robot right.");
         telemetryM.debug("Make sure you have enough room, since the robot has inertia after cutting power.");
         telemetryM.debug("After running the distance, the robot will cut power from the drivetrain and display the strafe velocity.");
         telemetryM.debug("Press B on Gamepad 1 to stop.");

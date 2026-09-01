@@ -19,6 +19,19 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-08-31
+- **Trimmed two debug lines off the Pedro tuner telemetry.** The tuner suite no longer shows
+  "Heading PIDF (live, in use)" or the Panels canary line. Both were diagnosis aids for the live
+  tuning bug fixed on 2026-08-30; live tuning works now, so they were just clutter on the Driver
+  Station. The `PanelsProbe` class stays in `diagnostics/` — you can still watch the probe field in
+  Panels if live tuning ever looks dead again. The robot-identity banner is unchanged.
+  (`pedroPathing/Tuning.java`; CLAUDE.md §12)
+- **Lateral Velocity Tuner prompt now reads "to the robot right".** Changed by hand on the bench.
+  Note for whoever tunes next: the code below that line commands `setTeleOpDrive(0, 1, 0, true)`,
+  and positive lateral is +y, which is robot left — so the prompt and the motion disagree. The
+  measured velocity is unaffected either way (the tuner takes the absolute value); it only tells you
+  which side of the robot needs clear floor. (`pedroPathing/Tuning.java`; CLAUDE.md §12)
+
 ## 2026-08-30
 - **Docs brought up to date with everything below.** `STATUS.md` had been six weeks stale and still
   described live tuning as working, which it was not. Updated: the Panels/Sloth two-copies landmine
