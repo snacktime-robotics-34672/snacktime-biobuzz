@@ -19,6 +19,14 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-01
+- **Pinpoint pod offsets now state their unit explicitly (inches).** The odometry pod offsets are
+  measured in inches on the robot, but the code handed them to Pedro without naming a unit and let
+  the library's default stand. Adding `.distanceUnit(DistanceUnit.INCH)` makes the intent explicit,
+  so the offsets can never be read as millimeters after a Pedro version bump. Applies to both
+  robots — the Pinpoint config is the shared helper. Pose behavior on a correctly-behaving build is
+  unchanged. (`pedroPathing/Constants.java`; CLAUDE.md §12)
+
 ## 2026-08-31
 - **Trimmed two debug lines off the Pedro tuner telemetry.** The tuner suite no longer shows
   "Heading PIDF (live, in use)" or the Panels canary line. Both were diagnosis aids for the live
