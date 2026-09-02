@@ -14,6 +14,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.RobotLog;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
@@ -316,6 +317,7 @@ public class Constants {
                 .hardwareMapName("pinpoint")
                 .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
                 .forwardPodY(forwardPodY)
-                .strafePodX(strafePodX);
+                .strafePodX(strafePodX)
+                .distanceUnit(DistanceUnit.INCH);
     }
 }
