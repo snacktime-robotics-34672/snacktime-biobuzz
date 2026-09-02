@@ -195,7 +195,12 @@ public final class Persistence {
      * UNKNOWN identity saves nothing (fail closed) — we never want to persist tuning we can't
      * attribute to a specific robot.
      */
-    public static void saveTuning(RobotIdentity id) {
+    public static synchronized void saveTuning(RobotIdentity id) {
+        // SYNCHRONIZED because there are now two writers: an OpMode's stop() on the loop thread, and
+        // the Pedro autosave daemon (TuningRecorder). Two threads writing the same file can
+        // interleave into truncated JSON, which the next load would reject wholesale — losing the
+        // tuning this feature exists to protect. The lock costs nothing: writes are rare and never
+        // on the hot path.
         String fileName = tuningFileFor(id.robot);
         if (fileName == null) {
             RobotLog.i("Persistence: robot UNKNOWN — tuning NOT saved (fail closed)");
@@ -339,7 +344,7 @@ public final class Persistence {
      * follower, rather than depending on some OpMode having called loadAndApplyTuning first. NEVER
      * in the loop.
      */
-    public static Map<String, Object> readTuningMap(RobotIdentity id) {
+    public static synchronized Map<String, Object> readTuningMap(RobotIdentity id) {
         String fileName = tuningFileFor(id.robot);
         if (fileName == null) return null;   // UNKNOWN hub: fail closed (§6)
         try {

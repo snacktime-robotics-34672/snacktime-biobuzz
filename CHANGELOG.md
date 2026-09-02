@@ -40,6 +40,11 @@ one-command rollback target is easy to find later.
   `pedroPathing/Constants.java`, `util/Persistence.java`, `util/RobotIdentity.java`,
   `config/TuningConfig.java`, `opmodes/TeleOpExample.java`; 12 new unit tests, 92 total;
   CLAUDE.md §6 and §7 updated)
+- **Tuning file writes are now serialized.** The autosave above added a second writer to each
+  robot's tuning file, alongside the OpMode stop that already wrote it. Two threads writing the same
+  file can interleave into truncated JSON, which the next load would reject outright — losing the
+  tuning the autosave exists to protect. Saving and reading are now serialized against each other.
+  Costs nothing: these writes are rare and never on the hot path. (`util/Persistence.java`)
 - **A Pedro tuning session can no longer be lost to a power cycle.** Pedro's PIDF gains, mass,
   zero-power accelerations, velocities, and pod offsets are live-editable in Panels but are not in
   the tuning JSON on purpose (§6 — git is their save path). That left a trap: turn a gain, lose
