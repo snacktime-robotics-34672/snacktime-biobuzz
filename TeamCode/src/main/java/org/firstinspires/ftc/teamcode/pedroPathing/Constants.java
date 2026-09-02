@@ -17,6 +17,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
@@ -34,9 +36,10 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *
  * HOW TO TUNE (one robot at a time):
  *   1. Run the "Tuning" OpMode ON the robot you are tuning. Its banner names the robot.
- *   2. Record the printed number into THAT robot's set below — comp values in the comp fields,
- *      test values in the test fields. Never into both.
- *   3. Commit. git is the backup for these values (CLAUDE.md §12).
+ *   2. Turn the knob in Panels. About a second after you stop, the value is written to that robot's
+ *      tuning file on the hub, and a paste-ready block goes to the RC log under PEDRO_TUNED.
+ *   3. Pull the file with ./save-tuning.sh and COMMIT IT. git is the backup (CLAUDE.md §12).
+ *      Committing the file is the save — do not transcribe numbers into the sets below.
  *
  * WHAT IS SHARED: motor names and directions (the wiring is identical on both robots, CLAUDE.md §10)
  * and {@link #pathConstraints}. Everything else is split.
@@ -66,9 +69,19 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * Panels shows all three sets (comp / test / fallback). Turn the knobs for the robot you are ON —
  * the Tuning banner names it. Editing comp's gains while standing at the test bot changes nothing.
  *
- * These stay OUT of the tuning JSON on purpose (CLAUDE.md §6): they are recorded into this file and
- * committed, so do NOT add Constants.class to Persistence.TUNING_CLASSES. Panels is how you find the
- * number; git is how you keep it.
+ * CHANGED 2026-09-01 — THESE NOW SAVE AND LOAD THEMSELVES (CLAUDE.md §6). They used to be code-only,
+ * which meant a tuning session lived in RAM until someone transcribed it by hand, and a power cycle
+ * or a crashed OpMode lost the lot. {@link PedroTuningStore} now flattens them into "Pedro.*" keys in
+ * the same per-robot tuning file as every other tunable; {@link TuningRecorder} saves them
+ * automatically when a value settles, and {@link #createFollower} loads them before it builds.
+ *
+ * So the VALUES IN THIS FILE ARE NOW FALLBACK DEFAULTS, not the canonical tuning — the committed
+ * per-robot JSON is. Editing a number here changes what a robot does only when its file is missing,
+ * rejected, or TuningConfig.pedroTuningLoadEnabled is false.
+ *
+ * Still do NOT add Constants.class to Persistence.TUNING_CLASSES — that path reflects over public
+ * static fields and cannot see inside Pedro's nested coefficient objects. PedroTuningStore's explicit
+ * table is what handles these, and it is round-trip unit-tested.
  */
 @Configurable
 public class Constants {
@@ -156,6 +169,20 @@ public class Constants {
      *                    than resolving here, so one OpMode reads the hub name exactly once
      */
     public static Follower createFollower(HardwareMap hardwareMap, RobotIdentity id) {
+        // Load this robot's saved Pedro tuning FIRST, before anything below reads a constant.
+        //
+        // WHY HERE and not at OpMode init: the follower is built once and captures these objects,
+        // so a load that runs after the build silently does nothing. Putting the load inside the
+        // one function that does the build means the order cannot be wrong — there is no rule for
+        // a future OpMode to forget. Fail-closed and all-or-nothing; see PedroTuningStore.
+        if (TuningConfig.pedroTuningLoadEnabled) {
+            PedroTuningStore.applyFrom(Persistence.readTuningMap(id), id);
+        } else {
+            RobotLog.ww("PedroConstants",
+                    "pedroTuningLoadEnabled=false — ignoring the saved tuning file, running on the "
+                            + "in-code constants in Constants.java");
+        }
+
         FollowerConstants follower = followerConstantsFor(id);
         MecanumConstants drivetrain = mecanumConstantsFor(id);
         PinpointConstants localizer = pinpointConstantsFor(id);
@@ -183,6 +210,11 @@ public class Constants {
         // path runs. setMaxPower() writes both, so the cap holds.
         built.setMaxPower(drivetrain.maxPower);
         lastAppliedMaxPower = drivetrain.maxPower;
+
+        // Log what the follower is ACTUALLY holding, read back out of the built object rather than
+        // out of the statics we just wrote. A value that persists but never reaches the follower
+        // looks perfectly tuned everywhere else; this is the only line that would catch it.
+        PedroTuningStore.logAsBuilt(built.getConstants(), drivetrain, localizer);
 
         return built;
     }

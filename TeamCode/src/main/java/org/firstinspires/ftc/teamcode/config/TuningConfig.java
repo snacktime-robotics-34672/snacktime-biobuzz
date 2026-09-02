@@ -25,5 +25,13 @@ public class TuningConfig {
     // matches (§4 rule 8). Flip on when investigating a loop-time regression.
     public static boolean profilerEnabled = false;
 
+    /**
+     * Whether a robot loads its saved Pedro tuning at init. ON by default — that is the point of
+     * the autosave. Turn it OFF to make the robot run on the reviewed in-code constants in
+     * Constants.java and ignore whatever is in the tuning file, which is the fastest way to answer
+     * "is the file doing this, or is the code?" when path following looks wrong.
+     */
+    public static boolean pedroTuningLoadEnabled = true;
+
     private TuningConfig() { } // static holder; never instantiated
 }

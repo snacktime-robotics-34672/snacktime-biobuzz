@@ -272,10 +272,10 @@ destabilize the robot. Therefore:
     `testbot_tuning.json` into `tuning/` (via `./save-tuning.sh`) and commit it **whole. Never
     transcribe individual numbers back into source as new code defaults** — that was an earlier model,
     now replaced. The in-code static defaults stay only as a last-resort fallback.
-  - **Pedro constants** (`pedroPathing/Constants.java`): these *do* live in code — record the
-    tuner's printed number into the per-robot constant set (`compFollowerConstants` /
-    `testFollowerConstants`) and commit. Here, transcription into source *is* the save path (few,
-    rare values).
+  - **Pedro constants** (`pedroPathing/Constants.java`): **as of 2026-09-01 these save themselves**
+    into the same per-robot JSON, so the save path is the same as every other tunable — commit the
+    file the robot wrote. Transcription into source is now only the manual fallback, using the
+    paste-ready block `TuningRecorder` writes to the RC log under `PEDRO_TUNED`.
 
 ### Two robots, one codebase — tuning ownership — NON-NEGOTIABLE
 We run a **Competition robot** and a **Test bot** off the *same commit* (never forked). The core
@@ -311,9 +311,28 @@ hub network name — see §10). Two tuning categories, handled differently *on p
 - An **UNKNOWN** hub gets a third set — untuned Pedro defaults capped at half power — and logs a
   warning. It must still build a follower to run at all, so it cannot "load nothing" the way tuning
   JSON does; capping power is how it fails closed. Never given comp's tuning.
-- Deliberately *not* in the JSON files: Pedro's tuners print a number you record into the constant
-  set (rare, few values), the follower is built once at init, and holding whole `FollowerConstants`
-  objects stays robust across Pedro version bumps.
+- **CHANGED 2026-09-01 — these are now saved to the per-robot JSON too, automatically.** They used
+  to be code-only, on the reasoning that they are few and rarely changed. In practice that meant a
+  tuning session lived only in RAM: turn a gain in Panels, lose power or crash the OpMode, and the
+  whole session was gone with nothing to transcribe from. That is exactly how the test bot's PIDF
+  tuning was lost on 2026-09-01. So now:
+  - `PedroTuningStore` flattens the tuned values (PIDF gains, centripetal scaling, mass, zero-power
+    accelerations, drive velocities, pod offsets) into plain `Pedro.*` double keys in the SAME
+    per-robot file as every other tunable. One file per robot holds all of that robot's tuning.
+  - **Saving is automatic.** Panels has no change hook, so `TuningRecorder` polls each loop in the
+    Tuning suite and, about a second after a value settles, queues a save. A daemon thread does the
+    write — never the loop thread.
+  - **Loading happens inside `Constants.createFollower`**, before it builds anything, so the load
+    can never run after the follower captured the constants. It is all-or-nothing: a missing,
+    unparseable, or out-of-range value rejects the whole Pedro block and the robot runs on the
+    in-code defaults, loudly. UNKNOWN loads nothing, as always.
+  - **The in-code constant sets are now last-resort fallbacks**, exactly like the other tunables.
+    The committed per-robot JSON is canonical. Save by committing the file, not by transcribing.
+  - `TuningConfig.pedroTuningLoadEnabled` turns the load off, to answer "is it the file or the code?"
+  - `pathConstraints` stays shared and stays in code — it is not per-robot tuning.
+  - After the follower is built, the values are read back OUT of it and logged. A value that
+    persists but never reaches the follower looks perfectly tuned everywhere else; this is the only
+    check that catches that, and it is a real failure we found in another team's codebase.
 
 ---
 
@@ -352,7 +371,10 @@ file can never silently override reviewed code:
 
 ### Rules — NON-NEGOTIABLE
 - **File I/O never happens in the main loop.** Writes and reads occur only on init, on stop, or on
-  an explicit button press — file access is slow and blocking (see §4).
+  an explicit button press — file access is slow and blocking (see §4). **One narrow exception
+  (added 2026-09-01), alongside the buffered `Datalogger` in §14:** the Pedro tuning autosave. The
+  loop only compares numbers and sets a flag; a low-priority daemon thread does the write. Nothing
+  blocking ever runs on the loop thread, and it is a bench path — only the Tuning suite polls.
 - **git is the real backup, not the hub.** Snapshots survive app restarts and normal code deploys,
   but a hub re-flash wipes them. Anything that matters long-term lives in git.
 - This is **complementary** to Panels capture/replay, not a replacement — capture/replay replays

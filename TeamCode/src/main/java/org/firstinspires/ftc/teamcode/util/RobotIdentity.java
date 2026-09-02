@@ -60,6 +60,17 @@ public final class RobotIdentity {
         this.networkName = networkName;
     }
 
+    /**
+     * Builds an identity from a known robot, WITHOUT reading the hub.
+     *
+     * For reconstructing an identity from a record (a snapshot names its robot) and for off-robot
+     * unit tests. Never use it to decide which robot the code is running on — that is
+     * {@link #resolve()}'s job, and it is the only thing that reads the hub.
+     */
+    public static RobotIdentity of(Robot robot, String networkName) {
+        return new RobotIdentity(robot, networkName == null ? "(unavailable)" : networkName);
+    }
+
     /** Read the hub's network name and resolve identity. Call once at init, not in the loop. */
     public static RobotIdentity resolve() {
         String name = null;

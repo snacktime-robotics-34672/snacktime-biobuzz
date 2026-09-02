@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
 
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
@@ -149,6 +150,7 @@ public final class Persistence {
     /** AUTO-EXPORT without hardware capture. Prefer the two-arg overload when hardwareMap is available. */
     public static void writeSnapshot(Snapshot snapshot) {
         captureTuningInto(snapshot.tuning);
+        PedroTuningStore.captureInto(snapshot.tuning, identityFromName(snapshot.robot));
         try {
             // Per-robot filename so pulling snapshots from both robots into one folder never clobbers,
             // and each file is self-describing (see snapshotFileFor).
@@ -204,6 +206,10 @@ public final class Persistence {
             file.getParentFile().mkdirs();
             Map<String, Object> values = new LinkedHashMap<>();
             captureTuningInto(values);
+            // Pedro's constants are not reflected over like the @Configurable classes above — they
+            // live in nested Pedro types, so PedroTuningStore flattens them into plain doubles.
+            // Same file: one per-robot file holds ALL of this robot's tuning.
+            PedroTuningStore.captureInto(values, id);
             ReadWriteFile.writeFile(file, GSON.toJson(values));
             RobotLog.i("Persistence: %s tuning saved → %s", id.robot, file.getAbsolutePath());
         } catch (Throwable t) {
@@ -322,6 +328,43 @@ public final class Persistence {
             }
         } catch (Throwable t) {
             snap.hardware.put("ERROR", "failed to enumerate: " + t.getMessage());
+        }
+    }
+
+    /**
+     * Reads this robot's tuning file and returns the raw key/value map, or null if there is nothing
+     * usable. Does NOT apply anything — the caller decides what to do with it.
+     *
+     * This exists so Constants.createFollower can load Pedro values at the moment it builds the
+     * follower, rather than depending on some OpMode having called loadAndApplyTuning first. NEVER
+     * in the loop.
+     */
+    public static Map<String, Object> readTuningMap(RobotIdentity id) {
+        String fileName = tuningFileFor(id.robot);
+        if (fileName == null) return null;   // UNKNOWN hub: fail closed (§6)
+        try {
+            File file = AppUtil.getInstance().getSettingsFile(fileName);
+            if (!file.exists()) return null;
+            Map<String, Object> values = GSON.fromJson(
+                    ReadWriteFile.readFile(file),
+                    new TypeToken<Map<String, Object>>() {}.getType());
+            return (values == null || values.isEmpty()) ? null : values;
+        } catch (Throwable t) {
+            RobotLog.e("Persistence: tuning read FAILED: %s", t.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Rebuilds a RobotIdentity from the robot name recorded on a Snapshot, so the snapshot can
+     * carry Pedro values for the right robot. Returns null for an unrecognised name, which
+     * PedroTuningStore treats as "record nothing" — fail closed, same as everywhere else.
+     */
+    private static RobotIdentity identityFromName(String robotName) {
+        try {
+            return RobotIdentity.of(RobotIdentity.Robot.valueOf(robotName), "(from snapshot)");
+        } catch (Exception e) {
+            return null;
         }
     }
 

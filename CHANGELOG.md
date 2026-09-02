@@ -20,6 +20,26 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-01
+- **Pedro tuning now saves and loads itself, per robot.** Turn a PIDF gain, mass, zero-power
+  acceleration, drive velocity, or pod offset in Panels, and about a second after you stop it is
+  written to that robot's own tuning file — the same `comp_tuning.json` / `testbot_tuning.json` that
+  already holds every other tunable. One file per robot, holding all of that robot's tuning. At init
+  the robot reads its own file back inside `createFollower`, before the follower is built, so a
+  loaded value can never arrive too late to matter. Saving a session is now: `./save-tuning.sh`,
+  then commit the file. You no longer transcribe numbers into `Constants.java`, and the constant
+  sets in that file are now fallback defaults rather than the real tuning.
+  Guards, all of them things that have actually bitten somebody: the load is **all-or-nothing** —
+  a missing, unreadable, or out-of-range value rejects the whole Pedro block and the robot runs on
+  the in-code defaults and says so on the Driver Hub, because a half-restored tune is worse than
+  none; an **UNKNOWN hub loads and saves nothing**, as with all tuning; the file write happens on a
+  **background thread**, never in the loop; `TuningConfig.pedroTuningLoadEnabled` turns loading off
+  when you need to ask whether the file or the code is causing something; and after the follower is
+  built the values are **read back out of it** and logged, which is the only way to catch a value
+  that saves perfectly but was never wired into the follower.
+  (`pedroPathing/PedroTuningStore.java`, `pedroPathing/TuningRecorder.java`,
+  `pedroPathing/Constants.java`, `util/Persistence.java`, `util/RobotIdentity.java`,
+  `config/TuningConfig.java`, `opmodes/TeleOpExample.java`; 12 new unit tests, 92 total;
+  CLAUDE.md §6 and §7 updated)
 - **A Pedro tuning session can no longer be lost to a power cycle.** Pedro's PIDF gains, mass,
   zero-power accelerations, velocities, and pod offsets are live-editable in Panels but are not in
   the tuning JSON on purpose (§6 — git is their save path). That left a trap: turn a gain, lose

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.logic;
 
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
 import org.firstinspires.ftc.teamcode.pedroPathing.TuningRecorder;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 import org.junit.Test;
@@ -21,7 +22,7 @@ public class TuningRecorderTest {
 
     /** Values 0..20 in tracked order, so each index shows up in the snippet as its own number. */
     private static double[] rampValues() {
-        double[] v = new double[TuningRecorder.VALUE_COUNT];
+        double[] v = new double[PedroTuningStore.VALUE_COUNT];
         for (int i = 0; i < v.length; i++) v[i] = i;
         return v;
     }
@@ -53,7 +54,7 @@ public class TuningRecorderTest {
 
     @Test
     public void anyMovedValueIsAChange() {
-        for (int i = 0; i < TuningRecorder.VALUE_COUNT; i++) {
+        for (int i = 0; i < PedroTuningStore.VALUE_COUNT; i++) {
             double[] moved = rampValues();
             moved[i] += 0.001;
             assertTrue("index " + i + " should register as a change",

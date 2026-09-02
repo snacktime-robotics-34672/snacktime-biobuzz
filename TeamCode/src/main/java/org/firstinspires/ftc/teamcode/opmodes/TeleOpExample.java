@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
@@ -80,6 +81,7 @@ public class TeleOpExample extends CommandOpMode {
         // Pedro drives the wheels; startTeleopDrive() sets it to open-loop mode (§10).
         // The identity picks this robot's own Pedro tuning — comp and test drive differently.
         follower = Constants.createFollower(hardwareMap, robotId);
+        telemetry.addLine(PedroTuningStore.lastStatus());
         follower.startTeleopDrive();
 
         // Fail loud rather than let two controllers fight over the same motors. Pedro's point-hold

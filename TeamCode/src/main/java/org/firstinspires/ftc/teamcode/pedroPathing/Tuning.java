@@ -107,6 +107,7 @@ public class Tuning extends SelectableOpMode {
 
         follower = Constants.createFollower(hardwareMap, id);
         TuningRecorder.reset();
+        telemetry.addLine(PedroTuningStore.lastStatus());
 
         // No refreshClass() call here on purpose. The Sloth build of Panels registers a class when
         // Sloth loads it, so Constants is already registered against this exact classloader by the

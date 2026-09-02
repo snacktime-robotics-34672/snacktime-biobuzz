@@ -5,105 +5,163 @@ import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.ftc.localization.constants.PinpointConstants;
 import com.qualcomm.robotcore.util.RobotLog;
 
+import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
- * TuningRecorder — makes a Pedro tuning session survive the robot losing power.
+ * TuningRecorder — notices when you change a Pedro value, then saves it two ways.
  *
- * THE PROBLEM IT SOLVES: Pedro constants are live-editable in Panels but are NOT in the tuning JSON
- * (CLAUDE.md §6 — they are recorded into Constants.java and committed; git is the save path). That
- * is deliberate, but it left a trap: a gain you turn in Panels lives only in RAM. Close the
- * dashboard or restart the Robot Controller and the whole session is gone, with nothing to
- * transcribe from. That is exactly how the 2026-09-01 test-bot PIDF session was lost.
+ * WHY IT EXISTS: Panels has no change hook. Its configurables module (checked against
+ * com.bylazar.sloth:configurables 0.2.4.1+1.0.5) writes a field by reflection and notifies nobody —
+ * there is no listener, callback, or observer to subscribe to. So "save when the value changes" has
+ * to be poll-and-compare. This class is that poll.
  *
- * WHAT IT DOES: watches the active robot's tuned values each loop and, whenever they settle after a
- * change, writes ONE paste-ready Java block to the Robot Controller log. RC logs are durable — they
- * survive an app restart and a power cycle (CLAUDE.md §14) — so the numbers are recoverable hours
- * later, from the pits, with the robot off. Recovering a session is then: pull the log, grep
- * PEDRO_TUNED, paste the block into {@link Constants}, hot-reload, commit.
+ * WHAT IT DOES when values change and then hold still:
+ *   1. Writes a paste-ready Java block to the RC log, tagged PEDRO_TUNED. RC logs survive an app
+ *      restart and a power cycle (CLAUDE.md §14), so a session is recoverable by hand even if the
+ *      JSON never gets written.
+ *   2. Queues a tuning-file save, so the values land in this robot's committed-tuning JSON.
+ *
+ * Two paths on purpose: the log is the human-readable backstop, the JSON is the automatic one. The
+ * log costs nothing extra and has already proved to be the thing you want when the other half fails.
  *
  * WHY ON CHANGE, NOT ON STOP: {@code SelectableOpMode.stop()} is final and delegates to the selected
- * tuner, so the Tuning suite has no single stop seam to hook — the same reason
- * {@link Tuning#drawCurrent} is where live-apply lives. Logging on change is also strictly safer:
- * a clean stop is the one path a dead battery or a crashed app never takes.
+ * tuner, so the Tuning suite has no single stop seam. More importantly, an exception in a tuner does
+ * not reach stop() at all — EventLoopManager catches it, rethrows as RobotCoreException, and goes to
+ * EMERGENCY_STOP, which exits the event loop without calling callActiveOpModeStop(). Since
+ * {@code Tuning.drawCurrent()} deliberately rethrows any drawing failure, that crash path is live in
+ * this suite every loop. Change-detection survives it; a stop hook would not.
  *
- * COST: on the steady path this is a handful of double compares against a cached array and no
- * allocation at all (CLAUDE.md §4.8). It builds a string only in the moment values settle after you
- * actually turn a knob. It runs in the Tuning suite only, never in a match OpMode.
+ * LOOP COST: {@link PedroTuningStore#VALUE_COUNT} double compares against a cached array and no
+ * allocation (CLAUDE.md §4.8). It builds a string, and hands off a file write, only in the moment
+ * values settle after you actually turned a knob. Bench-only — the Tuning suite calls it, match
+ * OpModes do not.
  *
- * HOW TO TELL IT IS WORKING: turn any gain in Panels, wait a second, then look for a line tagged
- * PEDRO_TUNED in logcat or robotControllerLog.txt.
+ * FILE I/O NEVER RUNS ON THE LOOP THREAD. The loop sets a flag; a daemon thread does the write.
  */
 public final class TuningRecorder {
 
-    /** Log tag — grep this in robotControllerLog.txt to recover a session. */
+    /** Log tag — grep this in robotControllerLog.txt to recover a session by hand. */
     public static final String TAG = "PEDRO_TUNED";
 
     /**
-     * How long the values must hold still before we log them, in nanoseconds.
+     * How long the values must hold still before we act, in nanoseconds.
      *
      * WHY A SETTLE DELAY: dragging a Panels slider walks through dozens of intermediate values. One
-     * log line per value would bury the number you actually stopped on. Waiting for the values to
-     * hold still means the log records where you landed, not the path you took.
+     * log line and one file write per value would bury the number you stopped on and hammer the
+     * disk. Waiting for the values to hold still records where you landed, not the path you took.
      */
     private static final long SETTLE_NANOS = 1_000_000_000L;
 
-    /** Number of tracked values. Must match {@link #capture} and {@link #format} exactly. */
-    public static final int VALUE_COUNT = 21;
+    private static final int N = PedroTuningStore.VALUE_COUNT;
 
-    // Last values seen, and whether they have changed since we last logged. Kept as a flat double[]
-    // so the per-loop comparison allocates nothing.
-    private static final double[] last = new double[VALUE_COUNT];
-    private static final double[] scratch = new double[VALUE_COUNT];
+    // Last values seen. Flat double[] so the per-loop comparison allocates nothing.
+    private static final double[] last = new double[N];
+    private static final double[] scratch = new double[N];
     private static boolean primed = false;
     private static boolean dirty = false;
     private static long lastChangeNanos = 0L;
 
+    // Set by the loop, cleared by the writer thread. Coalesces a burst of settles into one write.
+    private static final AtomicBoolean savePending = new AtomicBoolean(false);
+    private static volatile RobotIdentity saveIdentity = null;
+    private static Thread writerThread = null;
+
     private TuningRecorder() {}
 
     /**
-     * Reads the active robot's tuned values into {@code out}. Allocation-free.
+     * Call once per loop from the Tuning suite.
      *
-     * The order here is the contract between {@link #capture} and {@link #format}. Change one and
-     * you must change the other; {@link #VALUE_COUNT} guards the length.
+     * @param id  the robot resolved at init — picks which constant set is watched
+     * @param now {@code System.nanoTime()}, passed in so the settle logic can be tested off-robot
      */
-    public static void capture(double[] out, FollowerConstants f, MecanumConstants m, PinpointConstants p) {
-        out[0]  = f.coefficientsTranslationalPIDF.P;
-        out[1]  = f.coefficientsTranslationalPIDF.I;
-        out[2]  = f.coefficientsTranslationalPIDF.D;
-        out[3]  = f.coefficientsTranslationalPIDF.F;
+    public static void poll(RobotIdentity id, long now) {
+        if (id == null) return;
 
-        out[4]  = f.coefficientsHeadingPIDF.P;
-        out[5]  = f.coefficientsHeadingPIDF.I;
-        out[6]  = f.coefficientsHeadingPIDF.D;
-        out[7]  = f.coefficientsHeadingPIDF.F;
+        FollowerConstants f = Constants.followerConstantsFor(id);
+        MecanumConstants m = Constants.mecanumConstantsFor(id);
+        PinpointConstants p = Constants.pinpointConstantsFor(id);
 
-        out[8]  = f.coefficientsDrivePIDF.P;
-        out[9]  = f.coefficientsDrivePIDF.I;
-        out[10] = f.coefficientsDrivePIDF.D;
-        out[11] = f.coefficientsDrivePIDF.T;
-        out[12] = f.coefficientsDrivePIDF.F;
+        PedroTuningStore.capture(scratch, f, m, p);
 
-        out[13] = f.centripetalScaling;
-        out[14] = f.mass;
-        out[15] = f.forwardZeroPowerAcceleration;
-        out[16] = f.lateralZeroPowerAcceleration;
+        if (!primed) {
+            System.arraycopy(scratch, 0, last, 0, N);
+            primed = true;
+            return;
+        }
 
-        out[17] = m.xVelocity;
-        out[18] = m.yVelocity;
+        if (changed(scratch, last)) {
+            System.arraycopy(scratch, 0, last, 0, N);
+            dirty = true;
+            lastChangeNanos = now;
+            return;
+        }
 
-        // Pod offsets are not live (the localizer reads them once), but they belong in the record:
-        // OffsetsTuner prints them and they are just as easy to lose.
-        out[19] = p.forwardPodY;
-        out[20] = p.strafePodX;
+        if (dirty && now - lastChangeNanos >= SETTLE_NANOS) {
+            dirty = false;
+            RobotLog.ii(TAG, "%s tuning changed — paste this into Constants.java:%s",
+                    id.robot, format(id.robot, last));
+            queueSave(id);
+        }
     }
+
+    // ===================================================================================
+    // The off-thread writer — keeps file I/O off the loop (CLAUDE.md §4 rule 3, §7)
+    // ===================================================================================
+
+    /**
+     * Asks the writer thread to save this robot's tuning file. Returns immediately.
+     *
+     * The flag is the whole queue: if a write is already pending, a second settle inside the same
+     * window costs nothing and the one write that happens picks up the newer values, because the
+     * writer reads the live statics rather than a captured copy.
+     */
+    private static void queueSave(RobotIdentity id) {
+        saveIdentity = id;
+        savePending.set(true);
+        startWriterOnce();
+    }
+
+    /** Starts the daemon writer on first use. Daemon so it can never hold the app open. */
+    private static synchronized void startWriterOnce() {
+        if (writerThread != null) return;
+        writerThread = new Thread(new Runnable() {
+            @Override public void run() {
+                while (true) {
+                    try {
+                        Thread.sleep(250);
+                        if (savePending.compareAndSet(true, false)) {
+                            RobotIdentity id = saveIdentity;
+                            if (id != null) Persistence.saveTuning(id);
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    } catch (Throwable t) {
+                        // A failed autosave must never take the thread down — the next settle
+                        // should still get a chance to write. The paste-ready log block is the
+                        // backstop if writes keep failing.
+                        RobotLog.ee(TAG, "autosave failed: %s", t);
+                    }
+                }
+            }
+        }, "PedroTuningAutosave");
+        writerThread.setDaemon(true);
+        writerThread.setPriority(Thread.MIN_PRIORITY);
+        writerThread.start();
+    }
+
+    // ===================================================================================
+    // Pure helpers — public so they can be unit-tested off the robot (CLAUDE.md §9)
+    // ===================================================================================
 
     /**
      * Builds the paste-ready Java block for one robot's tuned values.
      *
-     * PURE — no hardware, no logging, no statics read. That is what lets it be unit-tested off the
-     * robot (CLAUDE.md §9), which matters because a wrong field name here produces a snippet that
-     * silently does not compile when a student pastes it at a competition.
+     * PURE. That matters because a wrong field name here produces a snippet that silently fails to
+     * compile when a student pastes it at a competition.
      */
     public static String format(RobotIdentity.Robot robot, double[] v) {
         String set = fieldPrefixFor(robot);
@@ -136,48 +194,9 @@ public final class TuningRecorder {
         }
     }
 
-    /**
-     * Call once per loop from the Tuning suite. Logs a paste-ready block whenever the tuned values
-     * change and then hold still for {@link #SETTLE_NANOS}.
-     *
-     * @param id  the robot resolved at init — picks which constant set is watched
-     * @param now {@code System.nanoTime()}, passed in so the settle logic can be tested off-robot
-     */
-    public static void poll(RobotIdentity id, long now) {
-        if (id == null) return;
-
-        FollowerConstants f = Constants.followerConstantsFor(id);
-        MecanumConstants m = Constants.mecanumConstantsFor(id);
-        PinpointConstants p = Constants.pinpointConstantsFor(id);
-
-        capture(scratch, f, m, p);
-
-        if (!primed) {
-            System.arraycopy(scratch, 0, last, 0, VALUE_COUNT);
-            primed = true;
-            return;
-        }
-
-        if (changed(scratch, last)) {
-            System.arraycopy(scratch, 0, last, 0, VALUE_COUNT);
-            dirty = true;
-            lastChangeNanos = now;
-            return;
-        }
-
-        if (dirty && now - lastChangeNanos >= SETTLE_NANOS) {
-            dirty = false;
-            RobotLog.ii(TAG, "%s tuning changed — paste this into Constants.java:%s",
-                    id.robot, format(id.robot, last));
-        }
-    }
-
-    /**
-     * True if any tracked value moved. Exact compare on purpose: Panels writes exact doubles.
-     * Pure, and public only so it can be unit-tested off the robot (CLAUDE.md §9).
-     */
+    /** True if any tracked value moved. Exact compare on purpose: Panels writes exact doubles. Pure. */
     public static boolean changed(double[] a, double[] b) {
-        for (int i = 0; i < VALUE_COUNT; i++) {
+        for (int i = 0; i < N; i++) {
             if (a[i] != b[i]) return true;
         }
         return false;
