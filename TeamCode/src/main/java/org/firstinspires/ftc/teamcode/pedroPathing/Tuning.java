@@ -106,6 +106,7 @@ public class Tuning extends SelectableOpMode {
         idBanner = id.banner();
 
         follower = Constants.createFollower(hardwareMap, id);
+        TuningRecorder.reset();
 
         // No refreshClass() call here on purpose. The Sloth build of Panels registers a class when
         // Sloth loads it, so Constants is already registered against this exact classloader by the
@@ -136,6 +137,11 @@ public class Tuning extends SelectableOpMode {
         // First, before anything below reads the follower. Outside the try/catch on purpose: a
         // failure to apply tuning is not a drawing failure and must not be reported as one.
         Constants.applyLive(follower, robotId);
+
+        // Record tuned values to the RC log so a session cannot be lost to a power cycle. Cheap on
+        // the steady path (a few double compares, no allocation) and it only writes when a value
+        // you changed settles. See TuningRecorder for why this is on change and not on stop.
+        TuningRecorder.poll(robotId, System.nanoTime());
 
         try {
             // Queued here (not flushed) — each sub-OpMode's own telemetryM.update(telemetry) call

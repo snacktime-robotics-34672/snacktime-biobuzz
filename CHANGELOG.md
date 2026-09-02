@@ -20,6 +20,18 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-01
+- **A Pedro tuning session can no longer be lost to a power cycle.** Pedro's PIDF gains, mass,
+  zero-power accelerations, velocities, and pod offsets are live-editable in Panels but are not in
+  the tuning JSON on purpose (§6 — git is their save path). That left a trap: turn a gain, lose
+  power, and the whole session is gone with nothing to transcribe from, which is how the test bot's
+  PIDF tuning was lost. The Tuning suite now watches those values and, about a second after you stop
+  turning a knob, writes one paste-ready Java block to the Robot Controller log, tagged
+  `PEDRO_TUNED`. RC logs survive an app restart and a power cycle, so you can recover the numbers
+  from the pits with the robot off: pull the log, search for `PEDRO_TUNED`, paste the block into
+  `Constants.java`, hot-reload, commit. It logs the set for the robot you are actually on — an
+  unidentified hub gets the `fallback` set, never comp's. Bench-only: the Tuning suite calls it,
+  match OpModes do not. (`pedroPathing/TuningRecorder.java`, `pedroPathing/Tuning.java`,
+  `pedroPathing/Constants.java`; 7 new unit tests; CLAUDE.md §6, §14)
 - **Pinpoint pod offsets now state their unit explicitly (inches).** The odometry pod offsets are
   measured in inches on the robot, but the code handed them to Pedro without naming a unit and let
   the library's default stand. Adding `.distanceUnit(DistanceUnit.INCH)` makes the intent explicit,
