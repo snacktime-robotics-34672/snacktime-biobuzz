@@ -33,5 +33,15 @@ public class TuningConfig {
      */
     public static boolean pedroTuningLoadEnabled = true;
 
+    /**
+     * Whether TeleOp watches tunables and saves them when they change. ON by default so a value you
+     * turn on the bench cannot be lost to a crash or a pulled battery.
+     *
+     * It costs one typed reflective read and one compare per watched tunable per loop — small, but
+     * not free, and it is the only per-loop cost the tuning autosave adds outside the Tuning suite.
+     * Turn it OFF for a match if you ever need that budget back; stop-time saving still works.
+     */
+    public static boolean autosaveTunables = true;
+
     private TuningConfig() { } // static holder; never instantiated
 }

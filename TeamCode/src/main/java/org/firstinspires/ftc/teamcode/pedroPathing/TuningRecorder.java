@@ -5,10 +5,9 @@ import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.ftc.localization.constants.PinpointConstants;
 import com.qualcomm.robotcore.util.RobotLog;
 
-import org.firstinspires.ftc.teamcode.util.Persistence;
+import org.firstinspires.ftc.teamcode.util.TuningAutosave;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * TuningRecorder — notices when you change a Pedro value, then saves it two ways.
@@ -64,11 +63,6 @@ public final class TuningRecorder {
     private static boolean dirty = false;
     private static long lastChangeNanos = 0L;
 
-    // Set by the loop, cleared by the writer thread. Coalesces a burst of settles into one write.
-    private static final AtomicBoolean savePending = new AtomicBoolean(false);
-    private static volatile RobotIdentity saveIdentity = null;
-    private static Thread writerThread = null;
-
     private TuningRecorder() {}
 
     /**
@@ -103,54 +97,8 @@ public final class TuningRecorder {
             dirty = false;
             RobotLog.ii(TAG, "%s tuning changed — paste this into Constants.java:%s",
                     id.robot, format(id.robot, last));
-            queueSave(id);
+            TuningAutosave.request(id);
         }
-    }
-
-    // ===================================================================================
-    // The off-thread writer — keeps file I/O off the loop (CLAUDE.md §4 rule 3, §7)
-    // ===================================================================================
-
-    /**
-     * Asks the writer thread to save this robot's tuning file. Returns immediately.
-     *
-     * The flag is the whole queue: if a write is already pending, a second settle inside the same
-     * window costs nothing and the one write that happens picks up the newer values, because the
-     * writer reads the live statics rather than a captured copy.
-     */
-    private static void queueSave(RobotIdentity id) {
-        saveIdentity = id;
-        savePending.set(true);
-        startWriterOnce();
-    }
-
-    /** Starts the daemon writer on first use. Daemon so it can never hold the app open. */
-    private static synchronized void startWriterOnce() {
-        if (writerThread != null) return;
-        writerThread = new Thread(new Runnable() {
-            @Override public void run() {
-                while (true) {
-                    try {
-                        Thread.sleep(250);
-                        if (savePending.compareAndSet(true, false)) {
-                            RobotIdentity id = saveIdentity;
-                            if (id != null) Persistence.saveTuning(id);
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    } catch (Throwable t) {
-                        // A failed autosave must never take the thread down — the next settle
-                        // should still get a chance to write. The paste-ready log block is the
-                        // backstop if writes keep failing.
-                        RobotLog.ee(TAG, "autosave failed: %s", t);
-                    }
-                }
-            }
-        }, "PedroTuningAutosave");
-        writerThread.setDaemon(true);
-        writerThread.setPriority(Thread.MIN_PRIORITY);
-        writerThread.start();
     }
 
     // ===================================================================================

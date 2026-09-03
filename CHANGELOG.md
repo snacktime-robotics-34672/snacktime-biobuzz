@@ -19,6 +19,39 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-02
+- **A forgotten `@Configurable` class now fails the build instead of losing your tuning.** Marking a
+  class `@Configurable` makes Panels show its knobs; registering it in `Persistence.TUNING_CLASSES`
+  is what makes those values survive a stop. Two separate steps, and skipping the second one gave no
+  signal at all — the knob appeared, worked, and the value vanished on every stop.
+  `TuningClassRegistrationTest` now scans the source for `@Configurable` classes and fails if one is
+  not registered, with a message naming it. Three classes are excused by name, each with its reason
+  written down. **It immediately found two real ones:** `FieldTweaks` — the field-offset corrections
+  you *measure on a physical field* — and `GameMechanism`, which is empty today but is where every
+  mechanism tunable lands at kickoff. Both are now registered.
+  (`util/Persistence.java`, `TuningClassRegistrationTest`)
+- **Nested tunables now actually restore.** `FieldTweaks` holds six `AutonFieldTweaks` objects, and
+  the restore path only understood numbers, strings, and enums — so registering it would have saved
+  the values correctly and then reported "NOT RESTORED" on every init. Nested objects are now
+  rebuilt from the JSON. (`util/Persistence.java`)
+- **Any tunable now saves when you change it, not just Pedro ones.** The autosave used to trigger
+  only on the 21 Pedro values, so changing a servo position or a speed cap on its own queued
+  nothing — the value survived only if the OpMode reached a clean stop, and a crash or a pulled
+  battery lost it. `TunableWatcher` now watches all 25 primitive tunables across every registered
+  class and saves about a second after one settles. It allocates nothing per loop: the field table
+  is built once, and the reads use Java's typed reflection accessors, which return primitives
+  instead of boxing them (§4 rule 8). The Tuning suite always watches; TeleOp watches while
+  `TuningConfig.autosaveTunables` is on, so the cost can be taken back for a match.
+  **Not covered:** strings, enums, and nested objects like `FieldTweaks` cannot be compared cheaply,
+  so they still rely on the stop-time save.
+  (`util/TunableWatcher.java`, `pedroPathing/Tuning.java`, `opmodes/TeleOpExample.java`,
+  `config/TuningConfig.java`)
+- **The autosave no longer wakes up when nothing is happening.** The writer thread polled a flag
+  four times a second forever once started. It now waits on a monitor: nothing at all while idle,
+  and the write starts the moment it is asked for rather than up to a tick later. Both watchers
+  share this one queue, so a Pedro change and a servo change moments apart cannot race each other
+  writing the same file. (`util/TuningAutosave.java`, `pedroPathing/TuningRecorder.java`)
+
 ## 2026-09-01
 - **Pedro tuning now saves and loads itself, per robot.** Turn a PIDF gain, mass, zero-power
   acceleration, drive velocity, or pod offset in Panels, and about a second after you stop it is

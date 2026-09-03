@@ -12,7 +12,9 @@ import com.qualcomm.robotcore.util.RobotLog;
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import com.qualcomm.robotcore.util.ReadWriteFile;
+import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
@@ -84,9 +86,32 @@ public final class Persistence {
     private static final List<Class<?>> TUNING_CLASSES = Arrays.asList(
             TuningConfig.class,
             Drivetrain.class,
-            JoystickCurve.class
-            // KICKOFF: add each new @Configurable subsystem class here, e.g. GameMechanism.class.
+            JoystickCurve.class,
+            // Field tweaks are measured on a PHYSICAL field and are expensive to re-measure, so
+            // they must survive a restart like any other tuning.
+            FieldTweaks.class,
+            GameMechanism.class
+            // KICKOFF: add each new @Configurable subsystem class here.
+            // TuningClassRegistrationTest fails the build if you forget.
     );
+
+    /** The registered tunable classes, for TunableWatcher's field table. */
+    public static List<Class<?>> tuningClasses() {
+        return TUNING_CLASSES;
+    }
+
+    /**
+     * Simple names of every class in {@link #TUNING_CLASSES}.
+     *
+     * Exists so an off-robot test can check that every @Configurable class in teamcode is actually
+     * registered here. Forgetting one used to be invisible: Panels shows the knob, the knob works,
+     * and the value silently vanishes on every stop.
+     */
+    public static java.util.Set<String> tuningClassSimpleNames() {
+        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        for (Class<?> cls : TUNING_CLASSES) names.add(cls.getSimpleName());
+        return names;
+    }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -416,6 +441,13 @@ public final class Persistence {
             f.set(null, ((Number) val).intValue());
         } else if (type == String.class) {
             f.set(null, String.valueOf(val));
+        } else if (!type.isPrimitive() && !(val instanceof String) && !type.isEnum()) {
+            // A nested tunable object — FieldTweaks holds six AutonFieldTweaks, for example. GSON
+            // already wrote it into the file as a nested map, so hand that map back to GSON and let
+            // it rebuild the object. Without this the value saves, looks right in the JSON, and is
+            // reported NOT RESTORED on every init. Still guarded: a shape GSON cannot rebuild throws
+            // and is reported by the caller, same as any other failure.
+            f.set(null, GSON.fromJson(GSON.toJsonTree(val), type));
         } else if (type.isEnum()) {
             // GSON writes an enum as its constant name. valueOf throws if the constant was renamed
             // or removed since the file was written — the caller logs that and keeps the code
