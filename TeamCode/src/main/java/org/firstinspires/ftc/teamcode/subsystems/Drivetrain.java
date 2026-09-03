@@ -26,7 +26,7 @@ public class Drivetrain extends SubsystemBase {
 
     // ---- Stand your ground: hold position when the sticks are released ----------------------
     // The robot captures where it is and fights to stay there until the driver touches a stick.
-    // See util/StandYourGround.java. Do NOT enable this together with headingCorrectionEnabled
+    // See util/StandYourGround.java. Do NOT enable this together with headingHoldEnabled
     // below — Pedro's point-hold already governs heading, so the two fight over the same motors.
 
     public static boolean holdWhenIdleEnabled = true;
@@ -53,15 +53,15 @@ public class Drivetrain extends SubsystemBase {
     public static double followPathTimeoutSec = 15.0;
 
     // Heading-hold PIDF for TeleOp — resists drift when driver isn't turning.
-    // TUNE ORDER: enable, raise headingP until it resists; add headingD if it oscillates; leave headingI at 0.
-    public static boolean headingCorrectionEnabled    = false;
-    public static double  headingNominalVoltage       = 12.4;  // voltage-compensate gains
-    public static double  headingCorrectionThresholdMin = 0.05; // ignore corrections smaller than this
-    public static double  headingCorrectionLagMs      = 200;   // ms to wait after stick release before engaging
-    public static double  headingP = 1.2;
-    public static double  headingI = 0;
-    public static double  headingD = 500;
-    public static double  headingF = 0;
+    // TUNE ORDER: enable, raise headingHoldP until it resists; add headingHoldD if it oscillates; leave headingHoldI at 0.
+    public static boolean headingHoldEnabled    = false;
+    public static double  headingHoldNominalVoltage       = 12.4;  // voltage-compensate gains
+    public static double  headingHoldThresholdMin = 0.05; // ignore corrections smaller than this
+    public static double  headingHoldLagMs      = 200;   // ms to wait after stick release before engaging
+    public static double  headingHoldP = 1.2;
+    public static double  headingHoldI = 0;
+    public static double  headingHoldD = 500;
+    public static double  headingHoldF = 0;
 
     // Config names must match the Robot Controller configuration (section 10).
     private final MotorEx frontLeft;

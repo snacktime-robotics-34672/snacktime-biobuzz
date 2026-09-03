@@ -31,8 +31,8 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
  *       follower.getPose().getHeading(), turnCommand, batteryVoltage);
  *   follower.setTeleOpDrive(forward, strafe, correctedTurn, false);
  *
- * TUNE ORDER: enable with `Drivetrain.headingCorrectionEnabled = true`. Bump `headingP` until
- * the robot resists rotation. If it oscillates, add `headingD` to damp it. Leave I at 0 unless
+ * TUNE ORDER: enable with `Drivetrain.headingHoldEnabled = true`. Bump `headingHoldP` until
+ * the robot resists rotation. If it oscillates, add `headingHoldD` to damp it. Leave I at 0 unless
  * you see steady-state drift.
  *
  * Ported from FTC 5327 SMS Robotics' decode-2025 (common/drive/HeadingCorrector.java). Adapted:
@@ -54,8 +54,8 @@ public class HeadingCorrector {
     }
 
     private void applyGains() {
-        hController.setPIDF(Drivetrain.headingP, Drivetrain.headingI,
-                Drivetrain.headingD, Drivetrain.headingF);
+        hController.setPIDF(Drivetrain.headingHoldP, Drivetrain.headingHoldI,
+                Drivetrain.headingHoldD, Drivetrain.headingHoldF);
     }
 
     public double getTargetHeading() {
@@ -94,7 +94,7 @@ public class HeadingCorrector {
      * @return turn command with any heading correction added in
      */
     public double correctHeading(double currentRobotHeading, double turnSpeed, double voltage) {
-        if (Drivetrain.headingCorrectionEnabled && !suppressed) {
+        if (Drivetrain.headingHoldEnabled && !suppressed) {
             if (Math.abs(turnSpeed) > 0) {
                 // Driver is actively turning — track the current heading as the new target and
                 // hold off correction until they release.
@@ -102,7 +102,7 @@ public class HeadingCorrector {
                 lagTimer.reset();
             }
 
-            if (lagTimer.milliseconds() > Drivetrain.headingCorrectionLagMs) {
+            if (lagTimer.milliseconds() > Drivetrain.headingHoldLagMs) {
                 double headingCorrection = computeCorrection(currentRobotHeading, voltage);
                 turnSpeed += headingCorrection;
             } else {
@@ -117,15 +117,15 @@ public class HeadingCorrector {
         double error = normalizeRadians(normalizeRadians(targetHeading) - normalizeRadians(currentRobotHeading));
         // Voltage-compensate: as battery drops, we ask for proportionally more correction to
         // achieve the same physical response.
-        error *= Drivetrain.headingNominalVoltage > 0
-                ? (Drivetrain.headingNominalVoltage / voltage) : 1;
+        error *= Drivetrain.headingHoldNominalVoltage > 0
+                ? (Drivetrain.headingHoldNominalVoltage / voltage) : 1;
 
         // Re-read gains each call so live edits from Panels take effect without restart.
         applyGains();
         double headingCorrection = hController.calculate(0, error);
 
         // Ignore tiny corrections — avoids twitchy behavior when heading is essentially on-target.
-        if (Math.abs(headingCorrection) < Drivetrain.headingCorrectionThresholdMin) {
+        if (Math.abs(headingCorrection) < Drivetrain.headingHoldThresholdMin) {
             headingCorrection = 0;
         }
         return headingCorrection;

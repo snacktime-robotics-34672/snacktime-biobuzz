@@ -86,7 +86,7 @@ of checking. Verify, don't assume.
 - **Per-field pose deltas**: `FieldTweaks.lookup(isRed, field)` returns the live-tunable pose
   offsets selected via the menu
 - **HeadingCorrector**: opt-in PIDF heading hold (disabled by default; enable via
-  `Drivetrain.headingCorrectionEnabled`)
+  `Drivetrain.headingHoldEnabled`)
 - **Servos**: `ServoUtil.degreesToPositionClamped(deg, min, max, range)` — soft limits + degrees API
 - **Per-robot tuning backup**: `Persistence.saveTuning(id)` / `loadAndApplyTuning(id, telemetry)` —
   dashboard values saved on every stop (incl. loop-time stats), restored on every init, into the
@@ -267,7 +267,7 @@ Original design notes (all still accurate):
 - **Reuse Pedro's `follower.holdPoint(pose)`** rather than a hand-rolled controller (verify the exact
   2.1.2 signature against the docs) — so hold quality rides on the **Step-2 follower PIDF tuning**,
   no second controller. Resume manual via `follower.startTeleopDrive()`.
-- **Don't co-run with `HeadingCorrector`** (`Drivetrain.headingCorrectionEnabled`) — Pedro's holdPoint
+- **Don't co-run with `HeadingCorrector`** (`Drivetrain.headingHoldEnabled`) — Pedro's holdPoint
   already owns heading; the two would fight. Gate the whole feature behind a `@Configurable` flag.
 - **Open question for build:** auto-hold-on-zero (what Aaron described) vs. a hold-enable button —
   auto-hold can fight a driver making fine sub-deadzone line-up nudges. Decide on the bench.

@@ -31,7 +31,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
  * snap back to the exact release point.
  *
  * DO NOT RUN WITH HEADING CORRECTION: Pedro's point-hold governs heading itself, so it and
- * {@code Drivetrain.headingCorrectionEnabled} would fight over the same motors. The OpMode warns if
+ * {@code Drivetrain.headingHoldEnabled} would fight over the same motors. The OpMode warns if
  * both are switched on.
  *
  * The decision logic here is pure and static so it can be unit-tested off the robot (CLAUDE.md §9);

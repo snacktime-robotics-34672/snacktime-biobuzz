@@ -95,6 +95,57 @@ public final class Persistence {
             // TuningClassRegistrationTest fails the build if you forget.
     );
 
+    /**
+     * Tunables that have been RENAMED, as "ClassName.oldName" -> "ClassName.newName".
+     *
+     * WHY THIS EXISTS: the load looks a value up by the field's current name. Rename a field and
+     * every tuning file still written with the old name goes quietly unread — the robot falls back
+     * to the code default, and the next autosave overwrites the file with that default. The tuned
+     * value is then gone for good, silently. That is the exact failure this whole tuning system was
+     * built to stop, so a rename must carry its old name with it.
+     *
+     * Entries are announced loudly when used, and can be deleted once every hub and the committed
+     * files in tuning/ have been re-saved under the new names.
+     */
+    private static final Map<String, String> RENAMED_TUNABLES = buildRenames();
+
+    private static Map<String, String> buildRenames() {
+        Map<String, String> m = new LinkedHashMap<>();
+        // 2026-09-02: the Drivetrain set was renamed heading* -> headingHold*, because "heading"
+        // read as Pedro's path-following heading PIDF, which is a different controller entirely.
+        m.put("Drivetrain.headingCorrectionEnabled",      "Drivetrain.headingHoldEnabled");
+        m.put("Drivetrain.headingCorrectionThresholdMin", "Drivetrain.headingHoldThresholdMin");
+        m.put("Drivetrain.headingCorrectionLagMs",        "Drivetrain.headingHoldLagMs");
+        m.put("Drivetrain.headingNominalVoltage",         "Drivetrain.headingHoldNominalVoltage");
+        m.put("Drivetrain.headingP", "Drivetrain.headingHoldP");
+        m.put("Drivetrain.headingI", "Drivetrain.headingHoldI");
+        m.put("Drivetrain.headingD", "Drivetrain.headingHoldD");
+        m.put("Drivetrain.headingF", "Drivetrain.headingHoldF");
+        return m;
+    }
+
+    /**
+     * Finds a value for {@code key}, falling back to whatever name it used to have.
+     * Pure apart from the log line, and public so it can be unit-tested off the robot (§9).
+     *
+     * @return the stored value, or null if neither the current nor a former name is present
+     */
+    public static Object lookupWithRenames(Map<String, Object> values, String key) {
+        Object direct = values.get(key);
+        if (direct != null) return direct;
+        for (Map.Entry<String, String> e : RENAMED_TUNABLES.entrySet()) {
+            if (e.getValue().equals(key)) {
+                Object legacy = values.get(e.getKey());
+                if (legacy != null) {
+                    RobotLog.ii("Persistence", "tuning key %s was read from its former name %s — "
+                            + "re-save this robot's tuning to update the file", key, e.getKey());
+                    return legacy;
+                }
+            }
+        }
+        return null;
+    }
+
     /** The registered tunable classes, for TunableWatcher's field table. */
     public static List<Class<?>> tuningClasses() {
         return TUNING_CLASSES;
@@ -293,7 +344,7 @@ public final class Persistence {
                 for (Field f : cls.getDeclaredFields()) {
                     int mods = f.getModifiers();
                     if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
-                    Object val = values.get(prefix + f.getName());
+                    Object val = lookupWithRenames(values, prefix + f.getName());
                     if (val == null) continue;
                     try {
                         if (applyToField(f, val)) {

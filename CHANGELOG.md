@@ -20,6 +20,22 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-02
+- **The TeleOp heading tunables are now named `headingHold*`.** `Drivetrain.headingP` and its
+  siblings read as Pedro's path-following heading PIDF, which is a completely different controller —
+  Pedro's turns the robot to the heading a *path* asks for while following it, while this set holds
+  whatever heading you were last pointing when the driver lets go of the turn stick in TeleOp. They
+  never run at the same time, so tuning one tells you nothing about the other, and the shared name
+  invited exactly the wrong conclusion. Eight fields renamed:
+  `headingCorrectionEnabled`/`ThresholdMin`/`LagMs`, `headingNominalVoltage`, and `headingP/I/D/F`.
+  Pedro's own keys are untouched — they live under `Pedro.*` and are correctly named there.
+  **A rename would normally lose tuning silently**: the load looks values up by the field's current
+  name, so every file written with the old names would go unread, the robot would fall back to code
+  defaults, and the next autosave would overwrite the file with those defaults. So the load now
+  falls back to a tunable's former name, says so in the log when it does, and the committed test-bot
+  file has been migrated. Nothing needs doing to any hub — an old file still loads correctly, and
+  re-saving it writes the new names. (`subsystems/Drivetrain.java`, `util/HeadingCorrector.java`,
+  `util/StandYourGround.java`, `opmodes/TeleOpExample.java`, `util/Persistence.java`,
+  `tuning/testbot_tuning.json`, `STATUS.md`; 5 new unit tests, 109 total)
 - **Field tweaks now save the moment you change them.** The six per-field, per-alliance
   corrections were stored as nested objects, and nested values are the one thing the autosave cannot
   watch — so these only ever saved on a clean OpMode stop. That is the wrong trade for numbers you

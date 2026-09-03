@@ -89,8 +89,8 @@ public class TeleOpExample extends CommandOpMode {
         // Fail loud rather than let two controllers fight over the same motors. Pedro's point-hold
         // governs heading while the brace is active, so heading correction has nothing to add and
         // would pull against it (§5 — say so clearly instead of starting degraded).
-        if (Drivetrain.holdWhenIdleEnabled && Drivetrain.headingCorrectionEnabled) {
-            telemetry.addLine("*** CONFLICT: turn OFF headingCorrectionEnabled — "
+        if (Drivetrain.holdWhenIdleEnabled && Drivetrain.headingHoldEnabled) {
+            telemetry.addLine("*** CONFLICT: turn OFF headingHoldEnabled — "
                     + "stand-your-ground already holds heading ***");
         }
 
@@ -162,7 +162,7 @@ public class TeleOpExample extends CommandOpMode {
         //   hold quality rides on that same tuning — no second controller to tune.
         //
         //   INTERACTION: Pedro's holdPoint already governs heading, so it would fight HeadingCorrector
-        //   (Drivetrain.headingCorrectionEnabled). Do NOT run both at once — the hold owns heading
+        //   (Drivetrain.headingHoldEnabled). Do NOT run both at once — the hold owns heading
         //   while active.
         //   LOOP COST (§0/§4): follower.update() is already the per-loop follower cost; capture the
         //   Pose only on the transition, not every loop, so no per-loop allocation is added.
