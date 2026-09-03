@@ -442,11 +442,15 @@ public final class Persistence {
         } else if (type == String.class) {
             f.set(null, String.valueOf(val));
         } else if (!type.isPrimitive() && !(val instanceof String) && !type.isEnum()) {
-            // A nested tunable object — FieldTweaks holds six AutonFieldTweaks, for example. GSON
-            // already wrote it into the file as a nested map, so hand that map back to GSON and let
-            // it rebuild the object. Without this the value saves, looks right in the JSON, and is
-            // reported NOT RESTORED on every init. Still guarded: a shape GSON cannot rebuild throws
-            // and is reported by the caller, same as any other failure.
+            // A nested tunable object. Nothing registered uses one today — FieldTweaks was
+            // flattened on 2026-09-02 precisely because nested values cannot be watched or restored
+            // cheaply — so this is a safety net, not a live path. It stays because without it a
+            // nested tunable saves, looks right in the JSON, and is reported NOT RESTORED on every
+            // init. GSON already wrote the value as a nested map, so hand that map back to GSON and
+            // let it rebuild the object. Still guarded: a shape GSON cannot rebuild throws and is
+            // reported by the caller, same as any other failure.
+            //
+            // PREFER FLATTENING over relying on this. See the FieldTweaks class doc for why.
             f.set(null, GSON.fromJson(GSON.toJsonTree(val), type));
         } else if (type.isEnum()) {
             // GSON writes an enum as its constant name. valueOf throws if the constant was renamed

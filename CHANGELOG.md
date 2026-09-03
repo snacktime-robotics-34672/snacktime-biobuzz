@@ -20,6 +20,17 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-02
+- **Field tweaks now save the moment you change them.** The six per-field, per-alliance
+  corrections were stored as nested objects, and nested values are the one thing the autosave cannot
+  watch — so these only ever saved on a clean OpMode stop. That is the wrong trade for numbers you
+  **measure on a physical field** and cannot re-derive at a desk: a crash between matches lost them.
+  They are now eighteen flat `double` tunables (three offsets × three fields × two alliances), which
+  the watcher covers like any other number. Watched tunables went from 25 to 43.
+  Nothing changes at the call site — `FieldTweaks.lookup(isRed, field)` still hands back one
+  `AutonFieldTweaks`, now built from the flat values rather than stored, so there is only ever one
+  copy of each number and no second representation to drift. Panels now shows each offset as its own
+  knob, grouped by field. (`config/FieldTweaks.java`, `util/Persistence.java`; 3 new unit tests
+  covering all six field/alliance combinations, 104 total)
 - **A forgotten `@Configurable` class now fails the build instead of losing your tuning.** Marking a
   class `@Configurable` makes Panels show its knobs; registering it in `Persistence.TUNING_CLASSES`
   is what makes those values survive a stop. Two separate steps, and skipping the second one gave no
