@@ -20,6 +20,16 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **The guard that catches unsaved tunables now looks at classes, not files.** The check that fails
+  the build when a dashboard-tunable class is not registered for saving worked off the FILE name, so
+  a file holding many classes counted as one. `Tuning.java` holds sixteen, and it was already on the
+  excused list, so the thirteen tuning tests could become dashboard-tunable and unsaved without the
+  check noticing — which is the exact thing it exists to catch. It now reads each `@Configurable`
+  and the declaration below it, stepping over other annotations and comments, so every class is
+  seen on its own. Proven by removing one tuner from the excused list: the build fails, where before
+  it stayed green. The tuning suite is excused as one named category with one reason, kept separate
+  from the list of individual exceptions so the suite growing does not look like the excuses growing.
+  (`logic/TuningClassRegistrationTest.java`; 6 new unit tests, 115 total)
 - **The tuning tests' distances now show up in Panels.** Every tuner in the suite has a number that
   sets how far it drives — 40 inches for the Drive and Line tests, 48 for the localization tuners, a
   radius for the circle, an angle for the turn test. None of them were ever editable from the
