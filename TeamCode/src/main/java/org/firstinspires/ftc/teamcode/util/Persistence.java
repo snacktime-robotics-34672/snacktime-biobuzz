@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
+import org.firstinspires.ftc.teamcode.subsystems.Vision;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
@@ -90,7 +91,11 @@ public final class Persistence {
             // Field tweaks are measured on a PHYSICAL field and are expensive to re-measure, so
             // they must survive a restart like any other tuning.
             FieldTweaks.class,
-            GameMechanism.class
+            GameMechanism.class,
+            // The camera transform: lens height, camera pitch, target height. You tune these by
+            // watching VisionCalibration against a tape measure, so losing them on stop would throw
+            // the whole session away.
+            Vision.class
             // KICKOFF: add each new @Configurable subsystem class here.
             // TuningClassRegistrationTest fails the build if you forget.
     );

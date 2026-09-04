@@ -20,6 +20,23 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **New "Vision Calibration" OpMode, and the camera layer under it.** It reads the Limelight and
+  prints the distance the geometry works out, so you can hold it against a tape measure before
+  anything drives on it. A wrong camera transform looks exactly like a badly tuned path follower
+  from the driver station, so this proves that layer first. Built from Aaron's starting code, with
+  three changes worth knowing: **the calibration numbers are now live** — turn camera height and
+  pitch in Panels under "Vision" and read the answer on the next loop, instead of editing code and
+  redeploying for every trial; **there is nothing to copy afterwards**, because auto reads the same
+  fields and they save into the robot's tuning file like every other tunable; and **the detection
+  rate now counts camera frames** rather than loops, so it means what it says — counting loops made
+  it read healthy no matter what the camera was doing, because the loop runs faster than the camera.
+  A stale target is reported as NO target (§5), the camera is read once per loop (§4), and the
+  OpMode says so by name if the camera is missing from the robot configuration. The distance math
+  is a pure function with its own tests, so the trigonometry is checked without a robot.
+  **This needs a FULL INSTALL the first time** — a new OpMode changes registration (§6 Tier 3);
+  after that it hot-reloads. (`logic/TargetGeometry.java`, `hardware/LimelightCamera.java`,
+  `subsystems/Vision.java`, `opmodes/VisionCalibration.java`, `util/Persistence.java`, `CLAUDE.md`
+  §10; 8 new unit tests, 123 total)
 - **The guard that catches unsaved tunables now looks at classes, not files.** The check that fails
   the build when a dashboard-tunable class is not registered for saving worked off the FILE name, so
   a file holding many classes counted as one. `Tuning.java` holds sixteen, and it was already on the
