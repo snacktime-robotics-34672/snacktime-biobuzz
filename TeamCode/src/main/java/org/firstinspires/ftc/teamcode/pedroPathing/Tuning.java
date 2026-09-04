@@ -1,9 +1,11 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.at;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.changes;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.drawCurrent;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.drawCurrentAndHistory;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.follower;
+import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.startCentered;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.stopRobot;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.telemetryM;
 
@@ -67,6 +69,46 @@ public class Tuning extends SelectableOpMode {
     // Resolved once in onSelect(), never re-read — the hub name cannot change while an OpMode runs.
     @IgnoreConfigurable
     static RobotIdentity robotId;
+
+    /**
+     * Where the path-following tuners start, and so where Panels draws them.
+     *
+     * Pedro's origin (0,0) is the bottom-left FIELD CORNER, not the center. A path anchored there
+     * runs along the wall, and Panels draws half the robot off the canvas, which makes the trace
+     * hard to read. Field center gives every test clear room on all sides.
+     *
+     * This is deliberately NOT the whole suite's start pose. Four tuners read the raw pose as their
+     * measurement: ForwardTuner and LateralTuner report getX()/getY() as "Distance Moved", and the
+     * two velocity tuners stop once getX()/getY() passes DISTANCE. Starting those anywhere but the
+     * origin would report a wrong multiplier, or end the run on the first loop. So onSelect() keeps
+     * the origin, and only the tuners that follow a path opt in through startCentered().
+     *
+     * OffsetsTuner already assumed this pose — its math is (72 - x) / 2 — so it now shares this one.
+     */
+    @IgnoreConfigurable
+    static final Pose START = new Pose(72, 72, 0);
+
+    /** A pose measured from {@link #START}: x forward, y left, in inches. */
+    static Pose at(double x, double y) {
+        return new Pose(START.getX() + x, START.getY() + y);
+    }
+
+    /** Same as {@link #at(double, double)}, carrying a heading in radians. */
+    static Pose at(double x, double y, double heading) {
+        return new Pose(START.getX() + x, START.getY() + y, heading);
+    }
+
+    /**
+     * Anchors a path-following tuner at field center. Call it from init(), so the robot is already
+     * drawn in the right place while you read the init_loop() instructions.
+     *
+     * The paths must be built with at() as well. The tuner paths are absolute field coordinates, so
+     * moving the pose alone would leave the path in the corner and the follower would drive the
+     * robot 100 inches across the field to reach it.
+     */
+    static void startCentered() {
+        follower.setStartingPose(START);
+    }
 
     public Tuning() {
         super("Select a Tuning OpMode", s -> {
@@ -802,7 +844,11 @@ class TranslationalTuner extends OpMode {
     private Path backwards;
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /** This initializes the Follower and creates the forward and backward Paths. */
     @Override
@@ -819,9 +865,9 @@ class TranslationalTuner extends OpMode {
     public void start() {
         follower.deactivateAllPIDFs();
         follower.activateTranslational();
-        forwards = new Path(new BezierLine(new Pose(0,0), new Pose(DISTANCE,0)));
+        forwards = new Path(new BezierLine(at(0, 0), at(DISTANCE, 0)));
         forwards.setConstantHeadingInterpolation(0);
-        backwards = new Path(new BezierLine(new Pose(DISTANCE,0), new Pose(0,0)));
+        backwards = new Path(new BezierLine(at(DISTANCE, 0), at(0, 0)));
         backwards.setConstantHeadingInterpolation(0);
         follower.followPath(forwards);
     }
@@ -866,7 +912,11 @@ class HeadingTuner extends OpMode {
     private Path backwards;
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /**
      * This initializes the Follower and creates the forward and backward Paths. Additionally, this
@@ -886,9 +936,9 @@ class HeadingTuner extends OpMode {
     public void start() {
         follower.deactivateAllPIDFs();
         follower.activateHeading();
-        forwards = new Path(new BezierLine(new Pose(0,0), new Pose(DISTANCE,0)));
+        forwards = new Path(new BezierLine(at(0, 0), at(DISTANCE, 0)));
         forwards.setConstantHeadingInterpolation(0);
-        backwards = new Path(new BezierLine(new Pose(DISTANCE,0), new Pose(0,0)));
+        backwards = new Path(new BezierLine(at(DISTANCE, 0), at(0, 0)));
         backwards.setConstantHeadingInterpolation(0);
         follower.followPath(forwards);
     }
@@ -934,7 +984,11 @@ class DriveTuner extends OpMode {
     private PathChain backwards;
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /**
      * This initializes the Follower and creates the forward and backward Paths. Additionally, this
@@ -957,13 +1011,13 @@ class DriveTuner extends OpMode {
         
         forwards = follower.pathBuilder()
                 .setGlobalDeceleration()
-                .addPath(new BezierLine(new Pose(0,0), new Pose(DISTANCE,0)))
+                .addPath(new BezierLine(at(0, 0), at(DISTANCE, 0)))
                 .setConstantHeadingInterpolation(0)
                 .build();
 
         backwards = follower.pathBuilder()
                 .setGlobalDeceleration()
-                .addPath(new BezierLine(new Pose(DISTANCE,0), new Pose(0,0)))
+                .addPath(new BezierLine(at(DISTANCE, 0), at(0, 0)))
                 .setConstantHeadingInterpolation(0)
                 .build();
 
@@ -1012,7 +1066,11 @@ class Line extends OpMode {
     private Path backwards;
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /** This initializes the Follower and creates the forward and backward Paths. */
     @Override
@@ -1028,9 +1086,9 @@ class Line extends OpMode {
     @Override
     public void start() {
         follower.activateAllPIDFs();
-        forwards = new Path(new BezierLine(new Pose(0,0), new Pose(DISTANCE,0)));
+        forwards = new Path(new BezierLine(at(0, 0), at(DISTANCE, 0)));
         forwards.setConstantHeadingInterpolation(0);
-        backwards = new Path(new BezierLine(new Pose(DISTANCE,0), new Pose(0,0)));
+        backwards = new Path(new BezierLine(at(DISTANCE, 0), at(0, 0)));
         backwards.setConstantHeadingInterpolation(0);
         follower.followPath(forwards);
     }
@@ -1077,7 +1135,11 @@ class CentripetalTuner extends OpMode {
     private Path backwards;
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /**
      * This initializes the Follower and creates the forward and backward Paths.
@@ -1096,8 +1158,8 @@ class CentripetalTuner extends OpMode {
     @Override
     public void start() {
         follower.activateAllPIDFs();
-        forwards = new Path(new BezierCurve(new Pose(), new Pose(Math.abs(DISTANCE),0), new Pose(Math.abs(DISTANCE),DISTANCE)));
-        backwards = new Path(new BezierCurve(new Pose(Math.abs(DISTANCE),DISTANCE), new Pose(Math.abs(DISTANCE),0), new Pose(0,0)));
+        forwards = new Path(new BezierCurve(at(0, 0), at(Math.abs(DISTANCE), 0), at(Math.abs(DISTANCE), DISTANCE)));
+        backwards = new Path(new BezierCurve(at(Math.abs(DISTANCE), DISTANCE), at(Math.abs(DISTANCE), 0), at(0, 0)));
 
         backwards.setTangentHeadingInterpolation();
         backwards.reverseHeadingInterpolation();
@@ -1138,9 +1200,9 @@ class CentripetalTuner extends OpMode {
  */
 class Triangle extends OpMode {
 
-    private final Pose startPose = new Pose(0, 0, Math.toRadians(0));
-    private final Pose interPose = new Pose(24, -24, Math.toRadians(90));
-    private final Pose endPose = new Pose(24, 24, Math.toRadians(45));
+    private final Pose startPose = at(0, 0, Math.toRadians(0));
+    private final Pose interPose = at(24, -24, Math.toRadians(90));
+    private final Pose endPose = at(24, 24, Math.toRadians(45));
 
     private PathChain triangle;
 
@@ -1159,7 +1221,11 @@ class Triangle extends OpMode {
     }
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     @Override
     public void init_loop() {
@@ -1204,15 +1270,17 @@ class Circle extends OpMode {
     private PathChain circle;
 
     public void start() {
+        // The robot faces this point the whole way round, so it moves with the circle.
+        Pose center = at(0, RADIUS);
         circle = follower.pathBuilder()
-                .addPath(new BezierCurve(new Pose(0, 0), new Pose(RADIUS, 0), new Pose(RADIUS, RADIUS)))
-                .setHeadingInterpolation(HeadingInterpolator.facingPoint(0, RADIUS))
-                .addPath(new BezierCurve(new Pose(RADIUS, RADIUS), new Pose(RADIUS, 2 * RADIUS), new Pose(0, 2 * RADIUS)))
-                .setHeadingInterpolation(HeadingInterpolator.facingPoint(0, RADIUS))
-                .addPath(new BezierCurve(new Pose(0, 2 * RADIUS), new Pose(-RADIUS, 2 * RADIUS), new Pose(-RADIUS, RADIUS)))
-                .setHeadingInterpolation(HeadingInterpolator.facingPoint(0, RADIUS))
-                .addPath(new BezierCurve(new Pose(-RADIUS, RADIUS), new Pose(-RADIUS, 0), new Pose(0, 0)))
-                .setHeadingInterpolation(HeadingInterpolator.facingPoint(0, RADIUS))
+                .addPath(new BezierCurve(at(0, 0), at(RADIUS, 0), at(RADIUS, RADIUS)))
+                .setHeadingInterpolation(HeadingInterpolator.facingPoint(center.getX(), center.getY()))
+                .addPath(new BezierCurve(at(RADIUS, RADIUS), at(RADIUS, 2 * RADIUS), at(0, 2 * RADIUS)))
+                .setHeadingInterpolation(HeadingInterpolator.facingPoint(center.getX(), center.getY()))
+                .addPath(new BezierCurve(at(0, 2 * RADIUS), at(-RADIUS, 2 * RADIUS), at(-RADIUS, RADIUS)))
+                .setHeadingInterpolation(HeadingInterpolator.facingPoint(center.getX(), center.getY()))
+                .addPath(new BezierCurve(at(-RADIUS, RADIUS), at(-RADIUS, 0), at(0, 0)))
+                .setHeadingInterpolation(HeadingInterpolator.facingPoint(center.getX(), center.getY()))
                 .build();
         follower.followPath(circle);
     }
@@ -1228,7 +1296,11 @@ class Circle extends OpMode {
     }
 
     @Override
-    public void init() {}
+    public void init() {
+        // Anchor at field center so Panels draws the trace in the middle, not down in the corner.
+        // The paths below are built with at(), from the same START — the two must move together.
+        startCentered();
+    }
 
     /**
      * This runs the OpMode, updating the Follower as well as printing out the debug statements to
@@ -1257,7 +1329,7 @@ class Circle extends OpMode {
 class OffsetsTuner extends OpMode {
     @Override
     public void init() {
-        follower.setStartingPose(new Pose(72, 72));
+        startCentered();
         follower.update();
         drawCurrent();
     }

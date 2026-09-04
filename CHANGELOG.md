@@ -19,6 +19,20 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-04
+- **The Pedro tuning tests now run at the middle of the field, not the corner.** Pedro's origin
+  (0,0) is the bottom-left field corner, so every path tuner started there and Panels drew the
+  robot half off the canvas with the trace running along the wall. Two tests were worse than
+  awkward: the triangle's middle point and part of the circle sat *outside* the field and never
+  drew at all. The seven tests that follow a path — Translational, Heading, Drive, Centripetal,
+  Line, Triangle, Circle — now start at field center (72, 72) and build their paths from that same
+  point, so the whole trace sits in the middle of the view. The robot needs the same clear floor
+  space it always did; only what Panels draws has changed. **The other tuners deliberately still
+  start at the corner:** Forward Tuner and Lateral Tuner report the raw pose as "Distance Moved",
+  and the two velocity tuners stop once the pose passes their distance — starting those at center
+  would print a wrong multiplier or end the run on the first loop. Offsets Tuner already used
+  (72, 72) and now shares the one constant. (`pedroPathing/Tuning.java`; 109 tests still pass)
+
 ## 2026-09-02
 - **The TeleOp heading tunables are now named `headingHold*`.** `Drivetrain.headingP` and its
   siblings read as Pedro's path-following heading PIDF, which is a completely different controller —
