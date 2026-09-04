@@ -282,6 +282,7 @@ class LocalizationTest extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 1.0, 5/6/2024
  */
+@Configurable
 class ForwardTuner extends OpMode {
     public static double DISTANCE = 48;
 
@@ -329,6 +330,7 @@ class ForwardTuner extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 2.0, 6/26/2025
  */
+@Configurable
 class LateralTuner extends OpMode {
     public static double DISTANCE = 48;
 
@@ -376,6 +378,7 @@ class LateralTuner extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 1.0, 5/6/2024
  */
+@Configurable
 class TurnTuner extends OpMode {
     public static double ANGLE = 2 * Math.PI;
 
@@ -426,6 +429,7 @@ class TurnTuner extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 1.0, 3/13/2024
  */
+@Configurable
 class ForwardVelocityTuner extends OpMode {
     private final ArrayList<Double> velocities = new ArrayList<>();
     public static double DISTANCE = 60;
@@ -532,6 +536,7 @@ class ForwardVelocityTuner extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 1.0, 3/13/2024
  */
+@Configurable
 class LateralVelocityTuner extends OpMode {
     private final ArrayList<Double> velocities = new ArrayList<>();
 
@@ -633,6 +638,7 @@ class LateralVelocityTuner extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/13/2024
  */
+@Configurable
 class ForwardZeroPowerAccelerationTuner extends OpMode {
     private final ArrayList<Double> accelerations = new ArrayList<>();
     public static double VELOCITY = 30;
@@ -738,6 +744,7 @@ class ForwardZeroPowerAccelerationTuner extends OpMode {
  * @author Baron Henderson - 20077 The Indubitables
  * @version 1.0, 3/13/2024
  */
+@Configurable
 class LateralZeroPowerAccelerationTuner extends OpMode {
     private final ArrayList<Double> accelerations = new ArrayList<>();
     public static double VELOCITY = 30;
@@ -836,6 +843,7 @@ class LateralZeroPowerAccelerationTuner extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/12/2024
  */
+@Configurable
 class TranslationalTuner extends OpMode {
     public static double DISTANCE = 40;
     private boolean forward = true;
@@ -904,6 +912,7 @@ class TranslationalTuner extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/12/2024
  */
+@Configurable
 class HeadingTuner extends OpMode {
     public static double DISTANCE = 40;
     private boolean forward = true;
@@ -976,6 +985,7 @@ class HeadingTuner extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/12/2024
  */
+@Configurable
 class DriveTuner extends OpMode {
     public static double DISTANCE = 40;
     private boolean forward = true;
@@ -1058,6 +1068,7 @@ class DriveTuner extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/12/2024
  */
+@Configurable
 class Line extends OpMode {
     public static double DISTANCE = 40;
     private boolean forward = true;
@@ -1127,6 +1138,7 @@ class Line extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/13/2024
  */
+@Configurable
 class CentripetalTuner extends OpMode {
     public static double DISTANCE = 20;
     private boolean forward = true;
@@ -1265,6 +1277,7 @@ class Triangle extends OpMode {
  * @author Harrison Womack - 10158 Scott's Bots
  * @version 1.0, 3/12/2024
  */
+@Configurable
 class Circle extends OpMode {
     public static double RADIUS = 10;
     private PathChain circle;

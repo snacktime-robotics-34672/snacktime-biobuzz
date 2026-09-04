@@ -20,6 +20,16 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **The tuning tests' distances now show up in Panels.** Every tuner in the suite has a number that
+  sets how far it drives — 40 inches for the Drive and Line tests, 48 for the localization tuners, a
+  radius for the circle, an angle for the turn test. None of them were ever editable from the
+  dashboard: only the `Tuning` menu class was marked `@Configurable`, so the numbers inside the 16
+  test classes were invisible and could only be changed by editing code. The 13 test classes that own
+  such a number are now `@Configurable` themselves, so Panels lists each one under its own name — set
+  `TurnTuner.ANGLE` to 62.8319 to spin ten turns for a yaw check, or shorten `DriveTuner.DISTANCE`
+  when the bench is tight, with no deploy. These are bench test settings, not robot tuning, so they
+  are deliberately NOT saved to the robot's tuning file and go back to their defaults on restart.
+  (`pedroPathing/Tuning.java`; 109 tests still pass)
 - **The Pedro tuning tests now run at the middle of the field, not the corner.** Pedro's origin
   (0,0) is the bottom-left field corner, so every path tuner started there and Panels drew the
   robot half off the canvas with the trace running along the wall. Two tests were worse than
