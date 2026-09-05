@@ -20,6 +20,15 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **Corrected the test bot's strafe pod offset sign.** `strafePodX` was -2.1985 and is now +2.1985.
+  Positive means the strafe pod sits FORWARD of the point the Pinpoint tracks around, so the old
+  sign placed it 2.2 inches behind when it is 2.2 inches ahead — a 4.4 inch error in where the robot
+  believes that pod is. This kind of error is invisible while driving straight and only appears when
+  the robot turns, as position error that grows with every rotation, which fits the drift we have
+  been chasing. Where the old number came from is not recorded; it arrived with the two-robot split
+  rather than from a run of Offsets Tuner. **This is the in-code fallback only** — the hub's tuning
+  file still holds the old sign and wins at init, so the robot needs the value changed in Panels and
+  saved before it drives any differently. (`pedroPathing/Constants.java`)
 - **Pod offsets now take effect while you turn them — no re-init.** The Pinpoint reads its pod
   offsets once, when the localizer is built, so changing one used to do nothing until you restarted
   the OpMode — and the restart reloaded the tuning file straight over your edit, which is exactly

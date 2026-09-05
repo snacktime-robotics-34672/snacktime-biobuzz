@@ -143,8 +143,16 @@ public class Constants {
     /** Test-bot drive velocities. TODO: run ForwardVelocityTuner and LateralVelocityTuner. */
     public static MecanumConstants testMecanumConstants = mecanumFor(78.27354, 61.582, 1.0);
 
-    /** Test-bot Pinpoint pod offsets. See the note on {@link #compPinpointConstants}. */
-    public static PinpointConstants testPinpointConstants = pinpointFor(4.3823, -2.1985);
+    /**
+     * Test-bot Pinpoint pod offsets. See the note on {@link #compPinpointConstants}.
+     *
+     * CORRECTED 2026-09-04: strafePodX was -2.1985 and is now +2.1985. Positive means the strafe pod
+     * sits FORWARD of the tracking center, so the old sign put it 2.2 inches behind when it is 2.2
+     * inches ahead. A wrong pod offset shows up only when the robot turns, as position error that
+     * grows with every rotation — which is the drift we were chasing. Where -2.1985 came from is not
+     * recorded: it arrived with the two-robot split, not from a run of OffsetsTuner.
+     */
+    public static PinpointConstants testPinpointConstants = pinpointFor(4.3823, 2.1985);
 
     // ===================================================================================
     // UNKNOWN HUB — fail closed (CLAUDE.md §5, §6)
