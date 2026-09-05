@@ -77,9 +77,10 @@ public class Drivetrain extends SubsystemBase {
      * builds a LynxGetADCCommand and blocks on sendReceive(). Four motors means four synchronous
      * round-trips to the hub, every loop, on top of everything else.
      *
-     * So do not take my word for the cost: whenever this is on, TeleOp telemeters "Amp read ms",
-     * measured. Watch it against the ~10ms budget and decide. Turning this off removes the reads
-     * and the per-motor readouts; nothing else changes.
+     * So do not take my word for the cost: {@link #getAmpReadMs()} times the four reads, and Loop Hz
+     * on the Driver Hub shows the result of leaving them on. Watch Hz against the ~10ms budget after
+     * you enable this. Turning it off removes the reads and the per-motor readouts; nothing else
+     * changes.
      */
     public static boolean currentMonitorEnabled = true;
 
@@ -189,7 +190,13 @@ public class Drivetrain extends SubsystemBase {
     /** The average total since the last reset — the load, which is what drains the battery. */
     public double getMeanTotalAmps() { return driveCurrent.getMean(); }
 
-    /** What the four current reads cost last loop, ms. Watch this against the §0 budget. */
+    /**
+     * What the four current reads cost last loop, ms — the price of currentMonitorEnabled.
+     *
+     * Not on the Driver Hub by default: it answers a question you ask once, when deciding whether
+     * to leave the monitor on, rather than something to watch every match. Telemeter it while you
+     * are making that call, then take it back off.
+     */
     public double getAmpReadMs() { return ampReadMs; }
 
     /** Clears max and mean. Call at START so init-time readings do not count toward the match. */

@@ -209,15 +209,13 @@ public class TeleOpExample extends CommandOpMode {
         // wheel, a wire about to let go. A total would average that away.
         //
         // Off in Panels (Drivetrain.currentMonitorEnabled) removes both the readouts and the four
-        // hub round-trips behind them. "Amp read ms" is what those reads cost, so the price of
-        // watching sits next to the thing you are watching (§0).
+        // hub round-trips behind them — which are not free, so watch Loop Hz above after turning it
+        // on. Drivetrain.getAmpReadMs() times those reads if you want the cost itemised.
         if (Drivetrain.currentMonitorEnabled) {
             addAmps("LF A", drivetrain.getLfAmps());
             addAmps("LR A", drivetrain.getLrAmps());
             addAmps("RF A", drivetrain.getRfAmps());
             addAmps("RR A", drivetrain.getRrAmps());
-            telemetry.addData("Amp read ms", drivetrain.getAmpReadMs());
-            panels.addData("Amp read ms", drivetrain.getAmpReadMs());
         }
         telemetry.update();
 

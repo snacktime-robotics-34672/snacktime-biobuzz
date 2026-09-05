@@ -25,7 +25,10 @@ one-command rollback target is easy to find later.
   shows one motor working harder than its three neighbours — a dragging bearing, a jammed wheel, a
   wire about to fail — and a total averages exactly that away. The running max and average of the
   total are still tracked and still available from the drivetrain; they are just not on screen.
-  "Amp read ms" stays, because it is what tells you whether watching this is costing you loop time.
+  The Driver Hub set is now just those four numbers: the "Amp read ms" cost line is gone, since it
+  answers a question you ask once — is leaving this on affordable — rather than one you watch every
+  match. The measurement is still there behind `Drivetrain.getAmpReadMs()`, and Loop Hz already
+  shows the effect of leaving the monitor on.
   (`subsystems/Drivetrain.java`, `opmodes/TeleOpExample.java`)
 - **TeleOp now shows total drive motor current — now, max and average.** The four drive motors' amps
   are added together and shown on the Driver Hub and in Panels. Max is the spike, which catches a
