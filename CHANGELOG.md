@@ -20,6 +20,19 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **Pod offsets now take effect while you turn them — no re-init.** The Pinpoint reads its pod
+  offsets once, when the localizer is built, so changing one used to do nothing until you restarted
+  the OpMode — and the restart reloaded the tuning file straight over your edit, which is exactly
+  how a measured strafe offset disappeared. The tuning suite now writes the offsets to the Pinpoint
+  the moment they change, so you turn the number and the robot's idea of its pods moves with it.
+  The write only happens when the value actually changes: it goes over I2C, the most expensive bus
+  on the robot, and in a match the offsets never change so it never writes at all. Paired with the
+  autosave, calibrating an offset is now turn-it, see-it, saved — with no restart anywhere in the
+  loop. This is live in the **Tuning suite**, which is where offsets get calibrated; TeleOp and Auto
+  still do not push live Pedro edits, on purpose (that is per-loop cost for knobs nobody turns
+  mid-match). Everything else on the Pinpoint — encoder resolution, encoder directions, yaw scalar —
+  is still read once when the localizer is built and still needs a re-init.
+  (`pedroPathing/Constants.java`)
 - **Every OpMode now saves every tunable you turn, not just the tuning suite.** Pedro's constants —
   the pod offsets, the follower gains, the drive velocities — were watched for changes ONLY while
   the Tuning suite was the running OpMode. Turn a pod offset from any other OpMode and nothing ever

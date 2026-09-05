@@ -8,6 +8,8 @@ import com.pedropathing.follower.FollowerConstants;
 import com.pedropathing.ftc.FollowerBuilder;
 import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.ftc.localization.constants.PinpointConstants;
+import com.pedropathing.ftc.localization.localizers.PinpointLocalizer;
+import com.pedropathing.localization.Localizer;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.math.Vector;
 import com.pedropathing.paths.PathConstraints;
@@ -59,8 +61,12 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *     pushes them in each loop. Motor names and directions are wiring, not tuning; leave them alone.
  *   - frontLeftVector — NOT live. The drivetrain bakes it into its own wheel vectors when it is
  *     built, so re-init the OpMode after you change the drive velocities.
- *   - PinpointConstants (pod offsets) — NOT live. The localizer reads them once when it is built.
- *     Change one and you must restart the OpMode to see any effect.
+ *   - PinpointConstants pod offsets — LIVE as of 2026-09-04, and only because {@link #applyLive}
+ *     writes them to the Pinpoint when they change. Pedro itself reads them once, in the localizer's
+ *     constructor, so before this you had to re-init to see any effect — and the re-init reloaded the
+ *     tuning file over your edit, which is how a measured offset got lost. Everything else on
+ *     PinpointConstants (encoder resolution, encoder directions, yaw scalar) is still read once at
+ *     build time and still needs a re-init.
  *
  * A running OpMode only picks up live edits if it calls {@link #applyLive} each loop. The Tuning
  * suite does; match OpModes deliberately do not, because that is per-loop cost for a knob nobody
@@ -257,6 +263,11 @@ public class Constants {
      */
     private static double lastAppliedMaxPower = Double.NaN;
 
+    // Pod offsets last written to the Pinpoint. NaN so the first comparison always differs and
+    // the offsets get pushed once at the start of a session.
+    private static double lastAppliedForwardPodY = Double.NaN;
+    private static double lastAppliedStrafePodX = Double.NaN;
+
     /**
      * Pushes this robot's constants into a follower that is already running, so a number typed in
      * Panels changes how the robot drives on the next loop instead of at the next OpMode restart.
@@ -299,6 +310,36 @@ public class Constants {
             follower.setMaxPower(drive.maxPower);
             lastAppliedMaxPower = drive.maxPower;
         }
+
+        applyPodOffsets(follower, pinpointConstantsFor(id));
+    }
+
+    /**
+     * Writes the pod offsets to the Pinpoint, but ONLY when they change.
+     *
+     * WHY ONLY ON CHANGE: this is an I2C write, and I2C is the most expensive thing on the bus
+     * (CLAUDE.md §4 rule 5). Comparing two doubles costs nothing; writing every loop would spend
+     * real loop time to tell the device something it already knows. In a normal match the values
+     * never change, so this costs two compares and never writes at all.
+     *
+     * ARGUMENT ORDER IS NOT A TYPO. goBILDA calls the forward-measuring pod the "X pod" and the
+     * strafe-measuring pod the "Y pod", and its setOffsets takes the X pod's SIDEWAYS position
+     * first, then the Y pod's FORWARD position. Pedro names those same two numbers forwardPodY and
+     * strafePodX. So forwardPodY goes in first. This mirrors what PinpointLocalizer's own
+     * constructor does, and the two must agree or a re-init would move the robot's idea of its pods.
+     */
+    private static void applyPodOffsets(Follower follower, PinpointConstants p) {
+        if (p.forwardPodY == lastAppliedForwardPodY && p.strafePodX == lastAppliedStrafePodX) return;
+
+        Localizer localizer = follower.getPoseTracker().getLocalizer();
+        if (!(localizer instanceof PinpointLocalizer)) return; // nothing to write to
+
+        ((PinpointLocalizer) localizer).getPinpoint()
+                .setOffsets(p.forwardPodY, p.strafePodX, p.distanceUnit);
+        lastAppliedForwardPodY = p.forwardPodY;
+        lastAppliedStrafePodX = p.strafePodX;
+        RobotLog.i("Constants: pod offsets pushed live → forwardPodY=%.4f strafePodX=%.4f",
+                p.forwardPodY, p.strafePodX);
     }
 
     // ===================================================================================
