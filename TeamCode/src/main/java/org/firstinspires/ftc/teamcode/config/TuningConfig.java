@@ -34,12 +34,19 @@ public class TuningConfig {
     public static boolean pedroTuningLoadEnabled = true;
 
     /**
-     * Whether TeleOp watches tunables and saves them when they change. ON by default so a value you
-     * turn on the bench cannot be lost to a crash or a pulled battery.
+     * Whether EVERY OpMode watches tunables and saves them when they change. ON by default so a
+     * value you turn on the bench cannot be lost to a crash or a pulled battery.
      *
-     * It costs one typed reflective read and one compare per watched tunable per loop — small, but
-     * not free, and it is the only per-loop cost the tuning autosave adds outside the Tuning suite.
-     * Turn it OFF for a match if you ever need that budget back; stop-time saving still works.
+     * CHANGED 2026-09-04: this is now the single switch for ALL autosave, in every OpMode, for both
+     * kinds of tunable — the @Configurable statics and Pedro's constants. Before, the Pedro half ran
+     * only inside the Tuning suite, so a pod offset turned in TeleOp was never queued for saving and
+     * the next re-init read the file straight back over it. Turning this OFF now turns off the
+     * Tuning suite's autosave as well, which is deliberate: one switch, no surprises about which
+     * OpMode saves what.
+     *
+     * It costs 21 double compares for the Pedro values, plus one typed reflective read and one
+     * compare per watched static — small, but not free. Turn it OFF for a match if you ever need
+     * that budget back; saving on a clean stop still works either way.
      */
     public static boolean autosaveTunables = true;
 

@@ -26,6 +26,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
+import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.TunableWatcher;
 
 import java.util.ArrayList;
@@ -186,12 +187,9 @@ public class Tuning extends SelectableOpMode {
         // Record tuned values to the RC log so a session cannot be lost to a power cycle. Cheap on
         // the steady path (a few double compares, no allocation) and it only writes when a value
         // you changed settles. See TuningRecorder for why this is on change and not on stop.
-        long nowNanos = System.nanoTime();
-        TuningRecorder.poll(robotId, nowNanos);
-        // Everything that is NOT a Pedro constant — servo positions, speed caps, thresholds. Pedro
-        // values are watched above; this catches a tunable you turn while a tuner happens to be the
-        // OpMode running.
-        TunableWatcher.poll(robotId, nowNanos);
+        // Both watchers, in one call, exactly as every other OpMode does it (see
+        // Persistence.pollAutosave). The suite used to be the only place the Pedro half ran.
+        Persistence.pollAutosave(robotId, System.nanoTime());
 
         try {
             // Queued here (not flushed) — each sub-OpMode's own telemetryM.update(telemetry) call

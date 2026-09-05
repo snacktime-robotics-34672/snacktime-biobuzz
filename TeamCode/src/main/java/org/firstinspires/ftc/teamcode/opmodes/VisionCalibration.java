@@ -80,6 +80,9 @@ public class VisionCalibration extends CommandOpMode {
         super.run();
 
         loopTimer.update();
+        // Any tunable you turn here — the camera height and pitch you are calibrating especially —
+        // saves about a second after it settles, without waiting for a clean stop.
+        Persistence.pollAutosave(robotId, System.nanoTime());
 
         telemetry.addLine(idBannerHtml);
         PanelsTelemetry.INSTANCE.getTelemetry().debug(idBanner);

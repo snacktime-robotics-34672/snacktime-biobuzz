@@ -149,6 +149,10 @@ public class AutonomousExample extends CommandOpMode {
 
         // Loop-time readout is REQUIRED (§0 prime directive, §4 rule 7). Pass numbers, not strings (§4 rule 8).
         loopTimer.update();
+        // Here for one rule with no exceptions: EVERY OpMode polls, so no tunable can be lost by
+        // being turned in the wrong OpMode. Nobody turns knobs during a real 30-second auto, so this
+        // is the first call to switch off (TuningConfig.autosaveTunables) if loop budget gets tight.
+        Persistence.pollAutosave(robotId, System.nanoTime());
         // Robot identity banner FIRST — larger/colored on the Driver Hub (HTML), plain text mirrored
         // to Panels. Pre-built strings, so no per-loop allocation (§4 rule 8).
         telemetry.addLine(idBannerHtml);

@@ -20,7 +20,6 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
-import org.firstinspires.ftc.teamcode.util.TunableWatcher;
 import org.firstinspires.ftc.teamcode.util.LogCleanup;
 import org.firstinspires.ftc.teamcode.util.LoopTimer;
 import org.firstinspires.ftc.teamcode.util.Persistence;
@@ -178,11 +177,10 @@ public class TeleOpExample extends CommandOpMode {
         // Loop-time readout is REQUIRED (section 0 prime directive, section 4 rule 7).
         // Pass numbers, not hand-built strings (rule 8). Watch Loop Hz for regressions.
         loopTimer.update();
-        // Save a tunable you change on the bench without waiting for a clean stop. Gated so the
-        // per-loop cost can be taken back for a match if it ever matters (§0).
-        if (TuningConfig.autosaveTunables) {
-            TunableWatcher.poll(robotId, System.nanoTime());
-        }
+        // Save ANY tunable you change on the bench without waiting for a clean stop — Pedro's
+        // constants included. Gated inside pollAutosave so the per-loop cost can be taken back for
+        // a match if it ever matters (§0).
+        Persistence.pollAutosave(robotId, System.nanoTime());
         // Robot identity banner FIRST, so "which robot am I on?" is always the top line — larger/
         // colored on the Driver Hub (HTML), plain text mirrored to Panels. Pre-built strings, so no
         // per-loop allocation (§4 rule 8).

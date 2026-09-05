@@ -20,6 +20,20 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-04
+- **Every OpMode now saves every tunable you turn, not just the tuning suite.** Pedro's constants —
+  the pod offsets, the follower gains, the drive velocities — were watched for changes ONLY while
+  the Tuning suite was the running OpMode. Turn a pod offset from any other OpMode and nothing ever
+  queued a save, so the value lived in memory until the next init read the file back over it and it
+  was gone, with nothing reporting a problem. That is how a strafe pod offset was lost. Both
+  change-watchers now run behind one call, `Persistence.pollAutosave`, which every OpMode makes once
+  per loop: TeleOp, Autonomous, Vision Calibration and the tuning suite. Turn a number, wait about a
+  second for it to settle, and it is on the hub whatever happens next — no clean stop needed.
+  `TuningConfig.autosaveTunables` is now the single switch for all of it, in every OpMode, and
+  turning it off now also stops the tuning suite's autosave — deliberate, so there is one rule
+  rather than a per-OpMode guess. The Systems Check is the one OpMode without the poll: it has no
+  control loop to put it in, and it already saves when it finishes.
+  (`util/Persistence.java`, `config/TuningConfig.java`, `pedroPathing/Tuning.java`,
+  `opmodes/TeleOpExample.java`, `opmodes/AutonomousExample.java`, `opmodes/VisionCalibration.java`)
 - **New "Vision Calibration" OpMode, and the camera layer under it.** It reads the Limelight and
   prints the distance the geometry works out, so you can hold it against a tape measure before
   anything drives on it. A wrong camera transform looks exactly like a badly tuned path follower

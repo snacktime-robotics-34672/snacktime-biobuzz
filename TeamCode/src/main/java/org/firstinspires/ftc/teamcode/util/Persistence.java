@@ -20,6 +20,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
+import org.firstinspires.ftc.teamcode.pedroPathing.TuningRecorder;
 
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
@@ -276,6 +277,29 @@ public final class Persistence {
      * UNKNOWN identity saves nothing (fail closed) — we never want to persist tuning we can't
      * attribute to a specific robot.
      */
+    /**
+     * Polls BOTH change-watchers. Call once per loop from EVERY OpMode.
+     *
+     * WHY ONE CALL: there are two watchers, because there are two kinds of tunable. TunableWatcher
+     * reflects over the @Configurable statics in TUNING_CLASSES; TuningRecorder reads Pedro's
+     * constants, which live in nested library types reflection cannot walk. Wiring them separately
+     * is how the Pedro half ended up running in the Tuning suite and nowhere else — turn a pod
+     * offset in TeleOp and nothing queued a save, so the value lived only until the next re-init
+     * read the file back over it. One call, so an OpMode cannot get half of it.
+     *
+     * COST: for Pedro, 21 direct double compares. For the rest, one typed reflective read and one
+     * compare per watched field. No allocation either way (§4.8). A file write happens only about a
+     * second after you stop turning something, and a daemon thread does it — never the loop thread.
+     *
+     * @param id  the robot resolved at init
+     * @param now {@code System.nanoTime()}
+     */
+    public static void pollAutosave(RobotIdentity id, long now) {
+        if (!TuningConfig.autosaveTunables) return;
+        TuningRecorder.poll(id, now);
+        TunableWatcher.poll(id, now);
+    }
+
     public static synchronized void saveTuning(RobotIdentity id) {
         // SYNCHRONIZED because there are now two writers: an OpMode's stop() on the loop thread, and
         // the Pedro autosave daemon (TuningRecorder). Two threads writing the same file can
