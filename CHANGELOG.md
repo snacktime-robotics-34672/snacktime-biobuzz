@@ -20,6 +20,13 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-05
+- **The drive current readout is now per motor, to two decimals.** TeleOp shows LF, LR, RF and RR
+  amps side by side instead of one combined total. Four wheels next to each other is the view that
+  shows one motor working harder than its three neighbours — a dragging bearing, a jammed wheel, a
+  wire about to fail — and a total averages exactly that away. The running max and average of the
+  total are still tracked and still available from the drivetrain; they are just not on screen.
+  "Amp read ms" stays, because it is what tells you whether watching this is costing you loop time.
+  (`subsystems/Drivetrain.java`, `opmodes/TeleOpExample.java`)
 - **TeleOp now shows total drive motor current — now, max and average.** The four drive motors' amps
   are added together and shown on the Driver Hub and in Panels. Max is the spike, which catches a
   stalled wheel or a shove into a wall; average is the load, which is what actually drains a battery.

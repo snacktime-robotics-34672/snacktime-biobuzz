@@ -79,11 +79,21 @@ public class Drivetrain extends SubsystemBase {
      *
      * So do not take my word for the cost: whenever this is on, TeleOp telemeters "Amp read ms",
      * measured. Watch it against the ~10ms budget and decide. Turning this off removes the reads
-     * and the three amp readouts; nothing else changes.
+     * and the per-motor readouts; nothing else changes.
      */
     public static boolean currentMonitorEnabled = true;
 
-    /** Max and mean of the four-motor total. Reset at START so init readings do not skew it. */
+    /** Per-motor amps from the last read, named for the config (LF_Motor, LR_Motor, ...). */
+    private double lfAmps = 0.0, lrAmps = 0.0, rfAmps = 0.0, rrAmps = 0.0;
+
+    /**
+     * Max and mean of the four-motor total. Reset at START so init readings do not skew it.
+     *
+     * TeleOp shows the four motors individually, not this — a single wheel fighting the other three
+     * is the fault you are usually looking for, and a total hides it. The total is still tracked
+     * because it costs one add() on numbers already in hand, and the accessors below put the spike
+     * and the battery load one telemetry line away when you want them.
+     */
     private final CurrentTracker driveCurrent = new CurrentTracker();
 
     /** What the four reads actually cost last loop, ms. Measured, not assumed (§0). */
@@ -150,13 +160,25 @@ public class Drivetrain extends SubsystemBase {
      */
     private void readDriveCurrent() {
         long startNanos = System.nanoTime();
-        double totalAmps = frontLeft.getCurrent(CurrentUnit.AMPS)
-                + frontRight.getCurrent(CurrentUnit.AMPS)
-                + backLeft.getCurrent(CurrentUnit.AMPS)
-                + backRight.getCurrent(CurrentUnit.AMPS);
+        lfAmps = frontLeft.getCurrent(CurrentUnit.AMPS);
+        lrAmps = backLeft.getCurrent(CurrentUnit.AMPS);
+        rfAmps = frontRight.getCurrent(CurrentUnit.AMPS);
+        rrAmps = backRight.getCurrent(CurrentUnit.AMPS);
         ampReadMs = (System.nanoTime() - startNanos) / 1_000_000.0;
-        driveCurrent.add(totalAmps);
+        driveCurrent.add(lfAmps + lrAmps + rfAmps + rrAmps);
     }
+
+    /** Front-left (LF_Motor) amps, most recent reading. */
+    public double getLfAmps() { return lfAmps; }
+
+    /** Left-rear (LR_Motor) amps, most recent reading. */
+    public double getLrAmps() { return lrAmps; }
+
+    /** Front-right (RF_Motor) amps, most recent reading. */
+    public double getRfAmps() { return rfAmps; }
+
+    /** Right-rear (RR_Motor) amps, most recent reading. */
+    public double getRrAmps() { return rrAmps; }
 
     /** Total amps across all four drive motors, most recent reading. */
     public double getTotalAmps() { return driveCurrent.getLast(); }

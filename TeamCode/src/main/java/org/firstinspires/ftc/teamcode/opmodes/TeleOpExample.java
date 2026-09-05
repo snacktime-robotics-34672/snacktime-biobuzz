@@ -15,6 +15,8 @@ import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
+import java.util.Locale;
+
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
@@ -202,17 +204,19 @@ public class TeleOpExample extends CommandOpMode {
         telemetry.addData("Y in", follower.getPose().getY());
         telemetry.addData("Heading °", Math.toDegrees(follower.getPose().getHeading()));
 
-        // Drive current. Off in Panels (Drivetrain.currentMonitorEnabled) removes both the readouts
-        // and the four hub round-trips behind them. "Amp read ms" is what those reads cost, so the
-        // price of watching is on screen next to the thing you are watching (§0).
+        // Drive current, per motor, right now. Four wheels side by side is the view that shows a
+        // single motor working harder than its three neighbours — a dragging bearing, a jammed
+        // wheel, a wire about to let go. A total would average that away.
+        //
+        // Off in Panels (Drivetrain.currentMonitorEnabled) removes both the readouts and the four
+        // hub round-trips behind them. "Amp read ms" is what those reads cost, so the price of
+        // watching sits next to the thing you are watching (§0).
         if (Drivetrain.currentMonitorEnabled) {
-            telemetry.addData("Amps now", drivetrain.getTotalAmps());
-            telemetry.addData("Amps max", drivetrain.getMaxTotalAmps());
-            telemetry.addData("Amps avg", drivetrain.getMeanTotalAmps());
+            addAmps("LF A", drivetrain.getLfAmps());
+            addAmps("LR A", drivetrain.getLrAmps());
+            addAmps("RF A", drivetrain.getRfAmps());
+            addAmps("RR A", drivetrain.getRrAmps());
             telemetry.addData("Amp read ms", drivetrain.getAmpReadMs());
-            panels.addData("Amps now", drivetrain.getTotalAmps());
-            panels.addData("Amps max", drivetrain.getMaxTotalAmps());
-            panels.addData("Amps avg", drivetrain.getMeanTotalAmps());
             panels.addData("Amp read ms", drivetrain.getAmpReadMs());
         }
         telemetry.update();
@@ -254,6 +258,21 @@ public class TeleOpExample extends CommandOpMode {
             case YIELDED: return "AUTO (driving to a spot)";
             default:      return "manual";
         }
+    }
+
+    /**
+     * Sends one amp reading to both displays, to two decimals.
+     *
+     * This formats a string every loop, which §4 rule 8 tells you to avoid — and it is the right
+     * call here anyway. Reading these four numbers costs four blocking round-trips to the hub,
+     * milliseconds; formatting them costs microseconds. The expensive half is the reads, and both
+     * halves vanish together when you turn the monitor off. Formatting once and handing the same
+     * string to both displays keeps it to one allocation per motor rather than two.
+     */
+    private void addAmps(String caption, double amps) {
+        String value = String.format(Locale.US, "%.2f", amps);
+        telemetry.addData(caption, value);
+        panels.addData(caption, value);
     }
 
     /** Returns 0 if |value| is within the deadzone, otherwise passes value through unchanged. */
