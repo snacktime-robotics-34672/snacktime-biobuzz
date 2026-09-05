@@ -4,6 +4,7 @@ import com.bylazar.field.FieldManager;
 import com.bylazar.field.PanelsField;
 import com.bylazar.field.Style;
 import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.math.Vector;
@@ -43,6 +44,9 @@ public class TeleOpExample extends CommandOpMode {
     private static final double ROBOT_RADIUS = 9;
 
     private final LoopTimer loopTimer = new LoopTimer();
+    // Looked up once. Panels' TelemetryManager buffers lines until update() is called, so this
+    // OpMode must call it every loop — see the note where it is called.
+    private final TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
     private BulkReads bulkReads;
     private Drivetrain drivetrain;
     private GamepadEx driver;
@@ -112,6 +116,8 @@ public class TeleOpExample extends CommandOpMode {
             // reset the timer right after paying that one-time cost — otherwise it wrongly counts
             // toward every session's maxLoopMs, matching LoopTimer.reset()'s own documented intent.
             loopTimer.reset();
+            // Same reasoning as the loop timer: init-time readings are not the match, so drop them.
+            drivetrain.resetCurrentStats();
         }
 
         // Read -> process -> write (section 4, rule 2).
@@ -185,7 +191,7 @@ public class TeleOpExample extends CommandOpMode {
         // colored on the Driver Hub (HTML), plain text mirrored to Panels. Pre-built strings, so no
         // per-loop allocation (§4 rule 8).
         telemetry.addLine(idBannerHtml);
-        PanelsTelemetry.INSTANCE.getTelemetry().debug(idBanner);
+        panels.debug(idBanner);
         // Current mode, which §8 asks for on the Driver Hub — a driver needs to know at a glance
         // whether the robot is braced or free, because the two feel very different on the sticks.
         // Constant strings, so no per-loop allocation (§4 rule 8).
@@ -195,7 +201,28 @@ public class TeleOpExample extends CommandOpMode {
         telemetry.addData("X in", follower.getPose().getX());
         telemetry.addData("Y in", follower.getPose().getY());
         telemetry.addData("Heading °", Math.toDegrees(follower.getPose().getHeading()));
+
+        // Drive current. Off in Panels (Drivetrain.currentMonitorEnabled) removes both the readouts
+        // and the four hub round-trips behind them. "Amp read ms" is what those reads cost, so the
+        // price of watching is on screen next to the thing you are watching (§0).
+        if (Drivetrain.currentMonitorEnabled) {
+            telemetry.addData("Amps now", drivetrain.getTotalAmps());
+            telemetry.addData("Amps max", drivetrain.getMaxTotalAmps());
+            telemetry.addData("Amps avg", drivetrain.getMeanTotalAmps());
+            telemetry.addData("Amp read ms", drivetrain.getAmpReadMs());
+            panels.addData("Amps now", drivetrain.getTotalAmps());
+            panels.addData("Amps max", drivetrain.getMaxTotalAmps());
+            panels.addData("Amps avg", drivetrain.getMeanTotalAmps());
+            panels.addData("Amp read ms", drivetrain.getAmpReadMs());
+        }
         telemetry.update();
+
+        // REQUIRED, and it was missing. Panels' TelemetryManager appends every line to a list and
+        // only clears it in update(), which nothing here called — so the list grew by one string
+        // per loop for the whole match and nothing we sent ever reached Panels. update() also
+        // rate-limits the actual send on its own, so calling it every loop is both correct and
+        // cheap.
+        panels.update();
 
         // Moves the robot dot on the Panels field view. This is a network send every loop — a
         // deliberate loop-time cost, flagged per §0/§4 — but it's dev-dashboard telemetry, not the

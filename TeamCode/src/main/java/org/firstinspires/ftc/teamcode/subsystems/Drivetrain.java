@@ -4,6 +4,8 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.teamcode.util.CurrentTracker;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
@@ -63,6 +65,30 @@ public class Drivetrain extends SubsystemBase {
     public static double  headingHoldD = 500;
     public static double  headingHoldF = 0;
 
+    // ---- Drive current monitor --------------------------------------------------------------
+
+    /**
+     * Watch the total current the four drive motors pull. ON by default so it is there when you
+     * want it, but it is NOT free: this is the one flag in this file that costs real loop time
+     * (CLAUDE.md §0), so turn it off in Panels for a match.
+     *
+     * WHY IT COSTS: motor current is NOT part of the bulk read, unlike encoder positions. Checked
+     * against the SDK — LynxDcMotorController.getMotorCurrent() has no bulk-cache path at all. It
+     * builds a LynxGetADCCommand and blocks on sendReceive(). Four motors means four synchronous
+     * round-trips to the hub, every loop, on top of everything else.
+     *
+     * So do not take my word for the cost: whenever this is on, TeleOp telemeters "Amp read ms",
+     * measured. Watch it against the ~10ms budget and decide. Turning this off removes the reads
+     * and the three amp readouts; nothing else changes.
+     */
+    public static boolean currentMonitorEnabled = true;
+
+    /** Max and mean of the four-motor total. Reset at START so init readings do not skew it. */
+    private final CurrentTracker driveCurrent = new CurrentTracker();
+
+    /** What the four reads actually cost last loop, ms. Measured, not assumed (§0). */
+    private double ampReadMs = 0.0;
+
     // Config names must match the Robot Controller configuration (section 10).
     private final MotorEx frontLeft;
     private final MotorEx frontRight;
@@ -116,8 +142,42 @@ public class Drivetrain extends SubsystemBase {
         driveRobot(0.0, 0.0, 0.0, 0.0);
     }
 
+    /**
+     * Reads all four motor currents and records the total.
+     *
+     * Read then process (§4 rule 2): the four reads happen together, then the sum goes in. Timing
+     * the block costs two nanoTime calls, nothing against the four round-trips being measured.
+     */
+    private void readDriveCurrent() {
+        long startNanos = System.nanoTime();
+        double totalAmps = frontLeft.getCurrent(CurrentUnit.AMPS)
+                + frontRight.getCurrent(CurrentUnit.AMPS)
+                + backLeft.getCurrent(CurrentUnit.AMPS)
+                + backRight.getCurrent(CurrentUnit.AMPS);
+        ampReadMs = (System.nanoTime() - startNanos) / 1_000_000.0;
+        driveCurrent.add(totalAmps);
+    }
+
+    /** Total amps across all four drive motors, most recent reading. */
+    public double getTotalAmps() { return driveCurrent.getLast(); }
+
+    /** The largest total pulled since the last reset — the spike (a stall, a wall, a shove). */
+    public double getMaxTotalAmps() { return driveCurrent.getMax(); }
+
+    /** The average total since the last reset — the load, which is what drains the battery. */
+    public double getMeanTotalAmps() { return driveCurrent.getMean(); }
+
+    /** What the four current reads cost last loop, ms. Watch this against the §0 budget. */
+    public double getAmpReadMs() { return ampReadMs; }
+
+    /** Clears max and mean. Call at START so init-time readings do not count toward the match. */
+    public void resetCurrentStats() { driveCurrent.reset(); }
+
     @Override
     public void periodic() {
+        // Four blocking hub round-trips when on — see currentMonitorEnabled before leaving it on.
+        if (currentMonitorEnabled) readDriveCurrent();
+
         // Per-wheel health telemetry (section 5) — VERBOSE ONLY so the match loop stays
         // allocation-free (prime directive section 0, section 4 rule 8). On the bench, flip
         // verboseTelemetry on and watch the four velocities for an outlier — exactly the view

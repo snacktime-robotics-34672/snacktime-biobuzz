@@ -19,6 +19,24 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-05
+- **TeleOp now shows total drive motor current — now, max and average.** The four drive motors' amps
+  are added together and shown on the Driver Hub and in Panels. Max is the spike, which catches a
+  stalled wheel or a shove into a wall; average is the load, which is what actually drains a battery.
+  Switch it off with `Drivetrain.currentMonitorEnabled` in Panels. **It is not free, and this is the
+  one setting in the drivetrain that costs real loop time.** Motor current is not part of the bulk
+  read, unlike encoder positions — each reading is its own blocking round-trip to the hub, so four
+  motors means four of them every loop. Rather than ask you to trust an estimate, TeleOp prints
+  "Amp read ms", the measured cost of those reads, right next to the amp numbers: watch it against
+  the 10ms budget and turn the monitor off for matches. The counters reset at START so init readings
+  do not skew the match.
+- **Fixed: nothing this TeleOp sent to Panels ever arrived.** Panels' telemetry buffers lines and
+  only clears them when you call update(), which TeleOp never did — so the robot identity line went
+  into a list that grew by one string every loop for the whole match and was never sent. TeleOp now
+  calls it once per loop. Panels rate-limits the actual send itself, so this is cheap.
+  (`util/CurrentTracker.java`, `subsystems/Drivetrain.java`, `opmodes/TeleOpExample.java`;
+  5 new unit tests, 128 total)
+
 ## 2026-09-04
 - **Corrected the test bot's strafe pod offset sign.** `strafePodX` was -2.1985 and is now +2.1985.
   Positive means the strafe pod sits FORWARD of the point the Pinpoint tracks around, so the old
