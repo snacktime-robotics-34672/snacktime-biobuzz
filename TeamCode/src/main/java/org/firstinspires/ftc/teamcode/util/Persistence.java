@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.util;
 
 import android.util.Log;
 
+import com.bylazar.configurables.annotations.IgnoreConfigurable;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -482,12 +483,33 @@ public final class Persistence {
         map.clear();
         for (Class<?> cls : TUNING_CLASSES) {
             for (Field f : cls.getDeclaredFields()) {
-                int mods = f.getModifiers();
-                if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) continue;
+                if (!isTunable(f)) continue;
                 try { map.put(cls.getSimpleName() + "." + f.getName(), f.get(null)); }
                 catch (Exception ignored) { }
             }
         }
+    }
+
+    /**
+     * Whether a field is something we should save — the SAME rule Panels uses to decide what to show.
+     *
+     * The two must agree. Panels registers a field when it is {@code !final && static && !ignored}
+     * (ConfigurablesPlugin.scan), and anything Panels will not let you turn is not a tunable. This
+     * used to take any public static field, which swept up constants that are not tunables at all:
+     * Vision's two Problem descriptors were saved into comp_tuning.json as nested objects, and since
+     * a Problem is not a number, a boolean or a string, the load could never put them back — so the
+     * robot reported "NOT RESTORED" at every init for values nobody ever meant to restore.
+     *
+     * A tunable is non-final by definition (CLAUDE.md §6 requires static, non-final), so excluding
+     * final fields costs nothing and closes the whole class of problem rather than one instance.
+     *
+     * Public only so the off-robot test can exercise it, the same as {@link #tuningFileFor}.
+     */
+    public static boolean isTunable(Field f) {
+        int mods = f.getModifiers();
+        if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods)) return false;
+        if (Modifier.isFinal(mods)) return false;
+        return !f.isAnnotationPresent(IgnoreConfigurable.class);
     }
 
     /**

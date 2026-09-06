@@ -19,6 +19,20 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-06
+- **The competition robot's tuning is now in git** (`tuning/comp_tuning.json`), pulled off its hub
+  and committed whole. It holds real work, not defaults: translational P/D/F, heading D, both
+  zero-power accelerations, both drive velocities and both pod offsets are measured values that
+  differ from Pedro's defaults and from the test bot's. Drive PIDF is still stock and mass is still
+  the 6.5 kg placeholder, so the Drive Tuner and a set of scales are what remain.
+- **Fixed: constants were being saved as if they were tunables.** The save picked up any public
+  static field, which is not the rule the dashboard uses. The Vision subsystem's two problem
+  descriptions are constants, not knobs, and they were written into the tuning file as nested
+  objects — which the load could never read back, so the robot reported values missing at every
+  init. Saving now uses exactly the dashboard's rule: a value must be changeable to be saved. The
+  two stray entries disappear from the file the next time either robot saves; nothing needs doing
+  by hand. (`util/Persistence.java`; 5 new unit tests, 133 total)
+
 ## 2026-09-05
 - **The drive current readout is now per motor, to two decimals.** TeleOp shows LF, LR, RF and RR
   amps side by side instead of one combined total. Four wheels next to each other is the view that
