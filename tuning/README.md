@@ -1,68 +1,169 @@
-# tuning/ — committed per-robot tuning (the canonical backup)
+# Saving robot tuning to GitHub
 
-These JSON files are the **canonical, git-backed tuning** for each physical robot. The same code
-runs on both robots and loads the right file by hub identity (see `CLAUDE.md` §6/§7/§10 and
-`WORKFLOW.md` §11).
+These JSON files are the **canonical, git-backed tuning** for each physical robot. Tuned values live
+on the robot's hub until someone pulls them into this repo and commits them. **git is the backup,
+not the hub** — a hub re-flash wipes its copy (`CLAUDE.md` §7, §12).
 
-| Robot | Hub network name | Committed file (here) | On-hub file it mirrors |
-|-------|------------------|-----------------------|------------------------|
+| Robot | Hub network name | Committed file (here) | File on the hub |
+|-------|------------------|-----------------------|-----------------|
 | Competition | `34672-RC` | `tuning/comp_tuning.json` | `/sdcard/FIRST/settings/comp_tuning.json` |
 | Test bot | `34672-T-RC` | `tuning/testbot_tuning.json` | `/sdcard/FIRST/settings/testbot_tuning.json` |
 
-The files may not exist yet — they're created the first time you save a robot's tuning.
+A file may not exist yet. It is created the first time that robot saves.
 
-> **Note (2026-08-30):** live dashboard tuning only started actually working on this date. Before
-> that, Panels edits never reached the robot — so any tuning file written earlier holds in-code
-> defaults, not tuned values. Re-tune from scratch rather than trusting an older file.
+Each robot reads and writes only its own file, so tuning one robot can never touch the other's
+values. A hub whose name is neither of those resolves to UNKNOWN and **saves nothing at all**.
 
-> **A value that saves may not restore.** Numbers, true/false, text and menu settings all round-trip.
-> Anything else is reported at init as `*** n NOT RESTORED ***` on the Driver Hub, with the field
-> named in the log. If you see that, the robot is running on the in-code default — don't assume the
-> file's value is live just because it appears in the JSON.
+---
 
-## Saving a robot's tuning (no transcription — just commit the file)
-After live-tuning in Panels, the robot writes its file to its own hub on stop. **A plain `git commit`
-does NOT back this up** — the values are on the hub, not in the repo yet. You have to pull the file
-into `tuning/` first. Two ways:
+## What ends up in the file
 
-**Easy way — the helper script** (`save-tuning.sh` at the repo root, run with the hub connected):
+One file holds everything for one robot:
+
+- Dashboard tunables — `TuningConfig.*`, `Drivetrain.*`, `JoystickCurve.*`, `FieldTweaks.*`,
+  `Vision.*`. Keys are namespaced `ClassName.fieldName`.
+- Pedro constants — 21 values under `Pedro.*`: the translational, heading and drive PIDF gains,
+  centripetal scaling, mass, both zero-power accelerations, the drive velocities, and the two pod
+  offsets.
+
+> **Changed 2026-09-01.** Pedro's constants used to live only in `pedroPathing/Constants.java`.
+> They now save and load with everything else. The values in `Constants.java` are **fallback
+> defaults** — what a robot uses when its file is missing or rejected. The committed file wins.
+
+---
+
+## Step 1 — Tune, and let it save itself
+
+Tune in Panels as normal. About **one second after you stop changing a value**, the robot writes it
+to its own file on the hub. You do not need to stop the OpMode cleanly, and you do not need to be in
+any particular OpMode — every OpMode saves.
+
+The robot also saves on a clean stop, so both paths cover you.
+
+**Do not transcribe numbers into source code.** Saving means committing the file the robot wrote.
+
+## Step 2 — Confirm the robot actually saved it
+
+Two ways, either is fine:
+
+- **Re-init any OpMode** and read the top telemetry lines. You want:
+  `LOADED TESTBOT TUNING (testbot_tuning.json, <timestamp>) — 63 values`
+  Then check in Panels that your value is still what you set it to. That round trip proves the write
+  and the read.
+- **Check the RC log** for a `PEDRO_TUNED` entry, which is written whenever a Pedro value settles.
+
+If you instead see `no tuning file yet` or `ROBOT UNKNOWN`, stop and fix that first — an UNKNOWN hub
+saves nothing. Name the hub `34672-RC` or `34672-T-RC` in the REV Hardware Client and reboot it.
+
+## Step 3 — Connect your laptop to the hub
+
+You need `adb`, which ships with Android Studio. Check it is on your PATH:
+
+```bash
+adb version
 ```
-./save-tuning.sh                 # auto-detects comp vs test from the connected hub
-git add tuning/ && git commit -m "Tune comp: <what changed>" && git push
-```
-No argument needed — it figures out which robot from the hub itself (it reads the per-robot snapshot
-filename the hub writes). You can still force it with `./save-tuning.sh comp` or `./save-tuning.sh
-test` if you ever need to. The script does the `adb pull` for the right file and shows what changed.
-It needs `adb` on your PATH (comes with Android Studio) and the robot's hub connected (USB or Wi-Fi
-adb). Because the script is committed to this repo, anyone who clones gets it — no per-machine setup
-beyond having adb.
 
-> Run it **after** you've tuned and stopped the OpMode — that's when the hub writes the file.
-> Auto-detect needs the hub to have written a snapshot at least once (any OpMode run does that); if
-> it hasn't, or the hub is still UNKNOWN, the script tells you what to fix.
+Then connect **one** of these two ways.
 
-**Manual way — the same thing by hand:**
-```
-adb pull /sdcard/FIRST/settings/comp_tuning.json    tuning/comp_tuning.json      # competition
-adb pull /sdcard/FIRST/settings/testbot_tuning.json tuning/testbot_tuning.json   # test bot
-git add tuning/ && git commit -m "Tune <robot>: <what changed>"
+**Over USB** — use the Control Hub's **USB-C** port, not the USB-A ports (those are for the Limelight
+and webcams), and use a data cable, not a charge-only one:
+
+```bash
+adb devices
 ```
 
-Either way, that's the whole "promote" step — a whole-file commit, **never** copying individual
-numbers into source. Each robot's file is independent, so committing one never touches the other's
-values. Confirm it worked with `git status` — you should see the `tuning/*.json` file changed.
+**Over Wi-Fi** — join the hub's own network from your laptop's Wi-Fi (`34672-RC` or `34672-T-RC`),
+then:
 
-## Restoring after a hub re-flash (or seeding a fresh hub)
-A re-flash wipes the hub's copy; the committed copy here is the backup. Push it back:
-
+```bash
+adb connect 192.168.43.1:5555
+adb devices
 ```
+
+Either way, `adb devices` must list a device. An empty list means you are not connected, and nothing
+below will work.
+
+## Step 4 — Pull the file into the repo
+
+From the repo root:
+
+```bash
+./save-tuning.sh
+```
+
+It works out which robot it is talking to from the hub itself and pulls the right file into
+`tuning/`. Force it if you ever need to:
+
+```bash
+./save-tuning.sh comp     # competition robot
+./save-tuning.sh test     # test bot
+```
+
+By hand, if you prefer:
+
+```bash
+adb pull /sdcard/FIRST/settings/comp_tuning.json    tuning/comp_tuning.json
+adb pull /sdcard/FIRST/settings/testbot_tuning.json tuning/testbot_tuning.json
+```
+
+## Step 5 — Look at what changed
+
+```bash
+git status --short tuning/
+git diff tuning/
+```
+
+Read the diff before committing. You should recognise the numbers you turned. If a value you did not
+touch has changed, find out why before pushing it.
+
+## Step 6 — Commit and push
+
+```bash
+git add tuning/
+git commit -m "Tune comp: drive PIDF after the Friday practice field"
+git push origin master
+```
+
+Say what changed and why, in plain words. We commit straight to `master`.
+
+## Step 7 — Confirm it is on GitHub
+
+```bash
+git log --oneline -1 --decorate
+```
+
+`origin/master` should be on the same line as your commit. If it is not, the push did not go through.
+
+---
+
+## Restoring a robot after a hub re-flash
+
+The committed file is the backup. Push it back onto the hub:
+
+```bash
 adb push tuning/comp_tuning.json /sdcard/FIRST/settings/comp_tuning.json
 ```
 
-If a hub has no file and none is restored, the robot runs on the in-code fallback defaults and says
-so loudly on the Driver Hub — it never silently loads the wrong robot's tuning.
+A hub with no file runs on the in-code fallback defaults and says so loudly on the Driver Hub. It
+never silently loads the other robot's tuning.
 
-## What is NOT here
-- **Pedro follower constants + pod offsets** live in code (`pedroPathing/Constants.java`), as
-  per-robot constant sets selected by identity — not in these JSON files (decided; see `STATUS.md`).
-- **Snapshots** (`snacktime_snapshot_*.json`) are records, not canonical — they're gitignored.
+---
+
+## When something goes wrong
+
+| What you see | What it means | What to do |
+|---|---|---|
+| `adb devices` lists nothing | Not connected | USB-C port and a data cable, or join the hub Wi-Fi and `adb connect 192.168.43.1:5555` |
+| `could not pull ... json` | That robot has never saved | Run an OpMode on it, change a value, stop it, try again |
+| `ROBOT UNKNOWN` on the Driver Hub | Hub name is neither robot's | Rename to `34672-RC` or `34672-T-RC` in the REV Hardware Client, reboot |
+| `no tuning file yet` at init | Fresh or re-flashed hub | Normal. Restore with `adb push`, or tune and save to create it |
+| `*** n NOT RESTORED ***` at init | A value saved but could not be read back | The robot is on the in-code default for it. The log names the field — report it |
+| A value you set is back to its old number | The file was loaded over your edit | Change it, wait a second for the autosave, confirm, then re-init |
+| Your commit is not on GitHub | The push failed | `git push origin master` again and read the error |
+
+## What is NOT in these files
+
+- **Snapshots** (`snacktime_snapshot_*.json`) are post-match records, not tuning. They are
+  gitignored.
+- **Encoder directions, encoder resolution and yaw scalar** are read once when the localizer is
+  built. They live in `pedroPathing/Constants.java` and are changed in code, not in Panels.
