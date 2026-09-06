@@ -50,7 +50,8 @@ Two ways, either is fine:
   `LOADED TESTBOT TUNING (testbot_tuning.json, <timestamp>) — 63 values`
   Then check in Panels that your value is still what you set it to. That round trip proves the write
   and the read.
-- **Check the RC log** for a `PEDRO_TUNED` entry, which is written whenever a Pedro value settles.
+- **Check the RC log** for a `PEDRO_TUNED` entry, which is written whenever a Pedro value
+  settles. See *Looking at the hub from Android Studio* below for how to read it.
 
 If you instead see `no tuning file yet` or `ROBOT UNKNOWN`, stop and fix that first — an UNKNOWN hub
 saves nothing. Name the hub `34672-RC` or `34672-T-RC` in the REV Hardware Client and reboot it.
@@ -133,6 +134,41 @@ git log --oneline -1 --decorate
 ```
 
 `origin/master` should be on the same line as your commit. If it is not, the push did not go through.
+
+---
+
+## Looking at the hub from Android Studio
+
+You do not need a terminal to see what is on the robot. Android Studio has a file browser for the
+connected device: **View → Tool Windows → Device Explorer**, or the tab on the right-hand edge.
+Older versions call it **Device File Explorer**. Newer ones show a device dropdown at the top and
+two tabs — you want **Files**.
+
+| What | Where on the hub |
+|---|---|
+| Tuning files | `/sdcard/FIRST/settings/comp_tuning.json`, `testbot_tuning.json` |
+| Snapshots | `/sdcard/FIRST/settings/snacktime_snapshot_COMPETITION.json` (or `_TESTBOT`) |
+| Match logs | `/sdcard/FIRST/matchlogs/` |
+| RC log | `/sdcard/FIRST/robotControllerLog.txt` |
+
+If `/sdcard` will not expand, try `/storage/emulated/0/FIRST/` — the same place under a different
+mount name. Double-click a `.json` to open it, or right-click and **Save As** to pull it somewhere.
+
+**Two things to know before relying on it:**
+
+1. **It needs the same adb connection as everything else** (Step 3). Device Explorer is a front end
+   for adb, so an empty device dropdown means the same thing an empty `adb devices` does.
+2. **Double-clicking opens a downloaded copy, not the file on the hub.** It lands in a temporary
+   folder, so this is for looking, not for the git workflow — it does not put anything in `tuning/`,
+   and editing that copy does not change the robot. Use `./save-tuning.sh` to save for real.
+
+**Where it earns its place** is the RC log, which the script does not touch. Open
+`robotControllerLog.txt` and search for:
+
+- `PEDRO_TUNED` — the paste-ready block written each time a Pedro value settles. This is the
+  decisive check for "did my edit actually register?" No entry means the change was never seen.
+- `SNAPSHOT:` — the full record of a run, including the git commit the robot was running.
+- `Persistence:` — every tuning save and load, with the file path it used.
 
 ---
 
