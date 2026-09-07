@@ -592,6 +592,16 @@ code, not memory:
   app starts, so a tunable added by hot reload has nothing registered to write into. Existing
   tunables hot-reload fine; new ones need Tier 3.
 
+- **A boolean in Panels does not commit on ENTER (2026-09-07).** Panels edits are staged until you
+  commit them. ENTER commits typed fields, so numbers feel instant, but a boolean is a dropdown:
+  pick `false`, press ENTER, and nothing reaches the robot. Use the **apply-all icon** in the
+  Configurables panel header ("update all modified variables"), or the per-row commit icon. The
+  icons are small and the header clips them when the panel is narrow, so widen the panel if you
+  cannot find them. Panels is also one-way — it does not re-read the robot unless you refresh — so
+  the field looking unchanged proves nothing either way. Cost us a session on
+  `Drivetrain.holdWhenIdleEnabled`. If apply-all also does nothing, this is not the UI: check the
+  Panels canary above.
+
 - **FTC Dashboard vs Sloth — RESOLVED.** We're on `com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1`
   (Sloth's fork) instead of stock `com.acmerobotics.dashboard`. Same API, no source changes, hot
   reload works. If anyone re-adds the stock dashboard, it will break Sloth again.

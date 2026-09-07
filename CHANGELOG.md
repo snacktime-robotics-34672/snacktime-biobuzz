@@ -20,6 +20,11 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-07
+- **Wrote down how Panels commits a boolean.** Picking `false` in a dropdown and pressing ENTER
+  stages the change but never sends it — you have to click the apply-all icon in the Configurables
+  panel header. Numbers hide this, because ENTER does commit a typed field. Recorded as a landmine
+  so the next person loses minutes, not a session. (`STATUS.md` Landmines)
+
 - **Added a total line to the TeleOp current readout.** The four per-motor amps are now followed by
   their sum, so battery load reads at a glance without adding the numbers up yourself. It comes from
   the same four readings already taken, so it costs no extra traffic to the hub.
