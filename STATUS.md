@@ -1,9 +1,28 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-08-30 — **Live dashboard tuning works for the first time, and the Decode
-carry-over list is complete.**
+**Last updated:** 2026-09-07 — **Tuning now saves itself from every OpMode, the competition
+robot's tuning is in git for the first time, and the vision layer is built but unproven.**
 
-The headline is a bug, not a feature: **Tier 1 live tuning had never worked on this robot, for any
+Three things landed in the week of 2026-09-01:
+
+1. **Tuning can no longer be lost.** Pedro's constants (follower PIDFs, pod offsets, drive
+   velocities) now save into the same per-robot JSON as everything else, and BOTH change-watchers
+   run in EVERY OpMode behind one call, `Persistence.pollAutosave`. Turn a knob, wait about a
+   second, it is on the hub — no clean stop needed. Pod offsets also apply live now, so you no
+   longer have to re-init to see an offset change, which was the step that silently reloaded the
+   file over your edit and lost a measured value.
+2. **`tuning/comp_tuning.json` exists.** Comp is substantially tuned — translational P/D/F, heading
+   D, both zero-power accelerations, both drive velocities and both pod offsets are real measured
+   values. Its drive PIDF is still stock and its mass is still the 6.5 kg placeholder.
+3. **The vision layer is written and NOT yet run on a robot.** `LimelightCamera` (layer 1),
+   `Vision` (layer 2), `VisionCalibration` (OpMode) and `TargetGeometry` (pure math, tested). It
+   needs a FULL INSTALL and a `limelight` entry in the hub configuration before it will run at all.
+
+Off-robot tests went 73 → **133**.
+
+---
+
+**Previously (2026-08-30):** the headline is a bug, not a feature: **Tier 1 live tuning had never worked on this robot, for any
 tunable.** Stock Panels and Sloth each loaded their own copy of every `@Configurable` class — same
 name, separate values — so Panels wrote one copy and the robot read the other, with no error
 anywhere. Proven on the test bot by reading a value both ways (50.0 through Panels' handle, 0.0
@@ -138,10 +157,14 @@ proven in July. The loop is now complete for real.
 | Step | State |
 |---|---|
 | 1. Hub identity works on real hubs | ✅ done 2026-07-19 |
-| 2. **Tune the test bot's Pedro PIDFs** | **⬅ NEXT, and now unblocked** |
-| 3. Confirm the JSON tuning save workflow round-trip | ⚠️ blocked until 2026-08-30, now possible |
-| 4. Limelight object detection | not started |
+| 2. **Tune the Pedro PIDFs** | comp partly done; **test bot barely started** |
+| 3. Confirm the JSON tuning save round-trip | ✅ done 2026-09-06 — comp's file is committed |
+| 4. Limelight object detection | **built, never run** — needs a full install + hub config entry |
 | 5. Pedro path-follow to the detected ball | depends on 2 & 4 |
+
+**Before step 2 on the test bot, settle its localization.** A clean Panels trace with the robot
+physically drifting right pointed at the Pinpoint, not the follower, and its `strafePodX` sign was
+found to be wrong. Tuning a follower on top of bad localization tunes the wrong thing.
 
 **Step 2 is the one that matters most now.** Everything built in August — stand-your-ground hold
 quality, drive-to-position accuracy, path tracking — rides on the follower PIDFs, and they are still
@@ -293,7 +316,68 @@ code, not memory:
 
 ---
 
-## Open work (consolidated 2026-08-30)
+## Open work (consolidated 2026-09-07)
+
+**Localization on the test bot — do this first, it blocks tuning:**
+- **Its hub file is not in git.** `tuning/testbot_tuning.json` is still the 2026-09-02 version and
+  has NO `Pedro.*` block. The hub's copy has two real measured values — `forwardZeroPowerAcceleration
+  = -41.278` and `lateralZeroPowerAcceleration = -71.551`-ish — that exist nowhere else. A re-flash
+  loses them. Pull and commit as soon as adb reaches the hub.
+- **`strafePodX` is corrected in code (+2.1985) but NOT on the hub.** The hub file still holds
+  -2.1985 and the file wins at init. Set it in Panels, let it save, then commit.
+- **Verify the pod encoder directions.** `pinpointFor` never sets them, so both robots inherit
+  Pedro's defaults (forward REVERSED, strafe FORWARD) and nobody has checked them against the actual
+  mounting. Push the robot a foot forward: x must increase. A foot left: y must increase.
+- **Run the two Pinpoint checks** for the drift we chased: sit still two minutes and watch heading
+  (any movement = gyro bias), then ten slow 360° spins (total should read 62.83 rad; x/y should not
+  wander). `yawScalar` is unset — goBILDA says it should rarely be needed, so treat a large
+  correction as a sign of a bad device.
+- **adb cannot reach either hub from Aaron's Mac.** No USB enumeration, and the Mac is not on the
+  hub network. Until that is fixed, files have to move by hand (Android Studio's Device Explorer).
+
+**On the bench, needs a robot and a driver:**
+- **Comp: run the Drive Tuner** — its drive PIDF is still Pedro stock — and **weigh both robots**
+  (still the 6.5 kg placeholder in both sets).
+- **Vision has never run.** Needs a full install (new OpMode = Tier 3) and a `limelight` entry in the
+  RC configuration on both robots. Then calibrate camera height and pitch against a tape measure and
+  check the tx sign with the ball clearly to one side.
+- **Stand-your-ground feel:** `holdUseScaling` on (gentle) vs off (fights harder), and whether
+  drivers want the 250 ms settle delay. Both live knobs.
+- **Alliance mirroring:** set `AllianceMirror.seasonSymmetry` at kickoff and **verify it on a real
+  field**. A wrong symmetry does not error — it drives a good path into the wrong quarter.
+- **Field tweak direction:** confirm whether the red tweaks should nudge in absolute field
+  coordinates (what we built) or alliance-relative.
+
+**Known gaps in the code, each a decision for Aaron:**
+- **`JoystickCurve.apply()` is never called.** The stick is linear today. The class is
+  `@Configurable`, unit-tested, and its four values are saved in both robots' tuning files, so it
+  looks live from every angle — but `TeleOpExample` reads only `deadzone` and applies its own.
+  Either wire it in behind a flag so drivers can compare, or delete it and its dead knobs.
+- **Pedro's `maxPower` is tunable but never saved.** It is not one of `PedroTuningStore`'s 21 keys,
+  so a value turned in Panels is gone at the next init. Adding a 22nd key needs care:
+  `readInto()` rejects the whole Pedro block if any key is missing, so both committed files would
+  stop loading until re-saved.
+- **`fallbackPinpointConstants` is byte-identical to comp's pod offsets** (6.735 / 0.287), not
+  Pedro's defaults. §6 describes the UNKNOWN set as untuned defaults and says it is never given
+  comp's tuning. Either point it at Pedro's defaults or document it as a deliberate exception.
+- **Tuner distances do not persist.** The suite's `DISTANCE`/`ANGLE`/`RADIUS` are `@Configurable`
+  as of 2026-09-04 but deliberately not in `TUNING_CLASSES` — they reset every session, by design.
+
+**Not started:**
+- **Step 5: path-follow to a detected ball** — depends on 2 and 4.
+- **Pose transfer TeleOp ↔ Auton.** `Snapshot.lastKnownGoodPose` exists as a field and is never
+  written or read. **Open question for Aaron: which direction?**
+- **SystemsCheck build-out** — gamepad LED status, stick-drift check, sensor reachability.
+- **`GameMechanism`** is still a template. Fill in at kickoff, and add it to
+  `Persistence.TUNING_CLASSES`.
+
+**Housekeeping:**
+- Branch protection on `master` vs. students pushing (see Handoff notes).
+- FTC SDK 11.2 upgrade still on hold pending Sloth Load 0.2.5 — revisit September 2026.
+
+---
+
+## Superseded — open work as consolidated 2026-08-30
 
 **On the bench, needs a robot and a driver:**
 - **Step 2: tune the Pedro follower PIDFs.** Blocks the quality of everything else. Also: weigh both
@@ -650,7 +734,14 @@ Managed via `claude.ai/code/routines`:
   rule ("Changes must be made through a pull request"). Aaron's account **bypasses** it on push;
   Kieran and Elijah may not be able to and would just see a rejection. Either drop the rule or move
   to PRs — worth settling before a student hits it.
-- **Recent commits** (newest first):
+- **Recent commits, week of 2026-09-01** (newest first): `45bcf9a` total line on the amp readout ·
+  `98f6c7e` save only fields the dashboard can turn · `ff85859` **comp's tuning file added** ·
+  `0acc94f`/`efa2046` tuning save guide rewritten · `55733ee`/`4afec1e`/`4933ae3` per-motor drive
+  current in TeleOp, plus a fix for Panels telemetry never being flushed · `9e2dc19` test-bot
+  strafe pod sign · `633e07b` pod offsets apply without a re-init · `fb86112` **autosave in every
+  OpMode** · `6745b0d` tunable-registration guard now per class · `02978b1` tuner distances are
+  configurable · `be6667e` tuning tests draw at field centre · `d09a8d7` **vision layer**
+- **Earlier commits** (newest first):
   - `c150208` — tuning values can no longer vanish silently on restore (the LOADED banner was
     over-counting, i.e. lying)
   - `6da2841` — drive-to-position, alliance mirroring, timeouts on every path command
@@ -661,6 +752,8 @@ Managed via `claude.ai/code/routines`:
 - **Read the Panels/Sloth landmine before touching any dashboard dependency.** It is the single most
   expensive thing we have hit, and it fails completely silently.
 - **Two-robot model** — read "Decisions still standing" and `CLAUDE.md` §6/§7/§10 before touching
-  tuning/persistence. Canonical tuning = committed per-robot files in `tuning/`; Pedro stays in
-  per-robot code constant sets (now built).
+  tuning/persistence. Canonical tuning = committed per-robot files in `tuning/`. **Corrected
+  2026-09-01: Pedro's constants are no longer code-only** — they save into the same per-robot JSON
+  under `Pedro.*` keys, and the sets in `Constants.java` are now fallback defaults, not canonical.
+  Never transcribe numbers into source; commit the file the robot wrote.
 - **Do not commit unless asked.** Aaron controls when commits happen.
