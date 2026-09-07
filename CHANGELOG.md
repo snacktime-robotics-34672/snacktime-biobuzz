@@ -19,6 +19,12 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-07
+- **Added a total line to the TeleOp current readout.** The four per-motor amps are now followed by
+  their sum, so battery load reads at a glance without adding the numbers up yourself. It comes from
+  the same four readings already taken, so it costs no extra traffic to the hub.
+  (`opmodes/TeleOpExample.java`)
+
 ## 2026-09-06
 - **The competition robot's tuning is now in git** (`tuning/comp_tuning.json`), pulled off its hub
   and committed whole. It holds real work, not defaults: translational P/D/F, heading D, both

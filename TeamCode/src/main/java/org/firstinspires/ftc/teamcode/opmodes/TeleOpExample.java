@@ -216,6 +216,9 @@ public class TeleOpExample extends CommandOpMode {
             addAmps("LR A", drivetrain.getLrAmps());
             addAmps("RF A", drivetrain.getRfAmps());
             addAmps("RR A", drivetrain.getRrAmps());
+            // The sum, for battery load at a glance. Already computed from the same four readings,
+            // so this costs no extra hub traffic.
+            addAmps("Total A", drivetrain.getTotalAmps());
         }
         telemetry.update();
 
