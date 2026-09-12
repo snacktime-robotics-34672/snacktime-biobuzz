@@ -379,9 +379,8 @@ code, not memory:
   with the **apply-all icon**, then `./save-tuning.sh`, then a PR.
 
 **Housekeeping:**
-- **SETTLED 2026-09-11: students work on branches and open pull requests.** See "Decisions still
-  standing". One question is still open — **who approves**: Aaron every time, or Kieran and Elijah
-  approving each other's work.
+- **SETTLED 2026-09-11: students work on branches and open pull requests, and only
+  `atkinsonaaron` or `cmyers734` approves them.** See "Decisions still standing".
 - FTC SDK 11.2 upgrade still on hold pending Sloth Load 0.2.5 — revisit September 2026.
 
 ---
@@ -519,9 +518,10 @@ code, not memory:
   **organization admins, always**, which is why Aaron's own pushes (and the AI's, run from his
   account) land on `master` with no request to review, while Kieran and Elijah would simply be
   rejected. GitHub will not accept a review from the author, so the approver is somebody else by
-  construction. **Still open: who approves.** Aaron reviewing everything makes him the bottleneck on
-  bench nights; the students approving each other makes the review real and doubles as the Explain-It
-  Gate with a paper trail. The Ball Hunt card teaches the branch + PR flow.
+  construction. **SETTLED 2026-09-11: only `atkinsonaaron` or `cmyers734` approves** — the two adult
+  org admins. Students do not approve each other's work. The tradeoff Aaron accepted: approval is a
+  bottleneck on bench nights, and in exchange every change is read by an adult before it reaches the
+  competition robot. The Ball Hunt card and `.github/CONTRIBUTING.md` teach the branch + PR flow.
 - **Pedro at 2.1.2.** Bumped 2.0.6 → 2.1.2 on 2026-07-15 (predictive braking, `isRobotStuck` fixes).
   Compatibility matrix says SolversLib 0.3.3+ supports Pedro 2.0.0 and higher; on-robot path-follow
   proof is what confirms the pair actually works.

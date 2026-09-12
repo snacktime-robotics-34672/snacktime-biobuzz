@@ -539,7 +539,9 @@ must know exactly what to revert):
   force-pushes. **Org admins bypass it** — today that is Aaron and one other adult — so a change
   pushed from an admin account is reviewed by nobody. Treat that bypass as the 11pm-before-a-qualifier
   escape hatch, not the normal path. Students (write access) are genuinely gated: branch → push →
-  pull request → somebody else approves. GitHub never lets an author approve their own request.
+  pull request → an approval. **Only the two adult admins approve** (`atkinsonaaron` or `cmyers734`) —
+  students do not approve each other's work, so every change is read by an adult before it can reach
+  the competition robot. GitHub never lets an author approve their own request.
 
 **AI rule — NON-NEGOTIABLE:** every change the AI makes adds its own `CHANGELOG.md` entry and a
 commit message describing what changed and why. The log stays trustworthy only if keeping it current

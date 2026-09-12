@@ -20,6 +20,9 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-11
+- **Settled who approves a pull request: Aaron or the other adult admin, nobody else.** Students open
+  requests but do not approve each other's, so every change is read by an adult before it can reach the
+  competition robot. The cost is a bottleneck on bench nights, accepted deliberately.
 - **The written docs now match the pull-request rule.** `tuning/README.md` still said "we commit
   straight to `master`" and told you to run `git push origin master`, which the repo refuses.
   `WORKFLOW.md` and `CLAUDE.md` §12 both said to keep `main` competition-ready — we have no `main`.

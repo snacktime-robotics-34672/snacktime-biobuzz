@@ -49,7 +49,12 @@ git push -u origin yourname/what-you-are-doing
 The push prints a link. Open it and click **Create pull request**, or run `gh pr create --fill`. Fill
 in the template — it is the charter checklist, and it is faster to tick than to argue about later.
 
-GitHub never lets you approve your own pull request. That is the point: somebody else reads it.
+**Who approves:** Aaron (`atkinsonaaron`) or `cmyers734`. Students do not approve each other's work —
+every change gets read by an adult before it can reach the competition robot. GitHub never lets you
+approve your own request either, so there is no way around this, and that is the point.
+
+If your request is sitting there, say so out loud at practice. A pull request nobody has looked at is
+not a process problem, it is a five-second reminder.
 
 ## Four commands nobody types here
 
