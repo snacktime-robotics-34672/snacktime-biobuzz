@@ -372,7 +372,9 @@ code, not memory:
   `Persistence.TUNING_CLASSES`.
 
 **Housekeeping:**
-- Branch protection on `master` vs. students pushing (see Handoff notes).
+- **SETTLED 2026-09-11: students work on branches and open pull requests.** See "Decisions still
+  standing". One question is still open — **who approves**: Aaron every time, or Kieran and Elijah
+  approving each other's work.
 - FTC SDK 11.2 upgrade still on hold pending Sloth Load 0.2.5 — revisit September 2026.
 
 ---
@@ -502,6 +504,17 @@ code, not memory:
 
 ## Decisions still standing
 
+- **Students push branches and open pull requests; nobody pushes to `master` directly.** Settled
+  2026-09-11, when Aaron asked where a student's merge request would appear. The repo already had the
+  rule; the workflow did not match it. Verified on GitHub that day: repository ruleset
+  **"Review Before Merging"**, enforcement **active**, targeting the default branch — requires a pull
+  request with **1 approving review**, and blocks branch deletion and force-pushes. Bypass is
+  **organization admins, always**, which is why Aaron's own pushes (and the AI's, run from his
+  account) land on `master` with no request to review, while Kieran and Elijah would simply be
+  rejected. GitHub will not accept a review from the author, so the approver is somebody else by
+  construction. **Still open: who approves.** Aaron reviewing everything makes him the bottleneck on
+  bench nights; the students approving each other makes the review real and doubles as the Explain-It
+  Gate with a paper trail. The Ball Hunt card teaches the branch + PR flow.
 - **Pedro at 2.1.2.** Bumped 2.0.6 → 2.1.2 on 2026-07-15 (predictive braking, `isRobotStuck` fixes).
   Compatibility matrix says SolversLib 0.3.3+ supports Pedro 2.0.0 and higher; on-robot path-follow
   proof is what confirms the pair actually works.
@@ -740,10 +753,11 @@ Managed via `claude.ai/code/routines`:
 - **Kieran & Elijah (students)** are the code-level directors. Per the relaxed Explain-It Gate,
   they can handle sophisticated patterns — but when they don't understand something, teach them,
   don't strip it out.
-- **Repo is on the `snacktime-robotics-34672` GitHub org.** ⚠️ `master` now has a branch-protection
-  rule ("Changes must be made through a pull request"). Aaron's account **bypasses** it on push;
-  Kieran and Elijah may not be able to and would just see a rejection. Either drop the rule or move
-  to PRs — worth settling before a student hits it.
+- **Repo is on the `snacktime-robotics-34672` GitHub org.** `master` is covered by the ruleset
+  "Review Before Merging": pull request with 1 approving review, no deletions, no force-pushes; org
+  admins bypass it always. **SETTLED 2026-09-11 — we keep the rule and students use PRs** (see
+  "Decisions still standing"). Aaron's pushes still bypass the gate, so a change made from his
+  account is never reviewed by anybody — worth remembering when the AI commits on his behalf.
 - **Recent commits, week of 2026-09-01** (newest first): `45bcf9a` total line on the amp readout ·
   `98f6c7e` save only fields the dashboard can turn · `ff85859` **comp's tuning file added** ·
   `0acc94f`/`efa2046` tuning save guide rewritten · `55733ee`/`4afec1e`/`4933ae3` per-motor drive

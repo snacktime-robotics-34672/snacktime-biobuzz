@@ -20,6 +20,16 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-11
+- **`save-tuning.sh` now tells you to open a pull request, not to push.** Its closing "Next:" line
+  still said `git add && git commit && git push`, which is refused on master and would have sent a
+  student chasing an error message. It now prints the branch-and-pull-request version and says why a
+  direct push to master is refused. (`save-tuning.sh`)
+- **Settled how students get code onto master: branches and pull requests.** The repo already
+  required a reviewed pull request, but Aaron's account bypasses that rule as an org admin, so nobody
+  had hit it yet — a student following the old instructions would have been rejected with no
+  explanation. The Ball Hunt card now teaches the branch and pull-request flow, and STATUS.md records
+  the decision. Still open: whether Aaron approves every request or the students approve each other.
+  (`STATUS.md`)
 - **The drive current monitor is now OFF by default.** It reads the four motor currents every loop,
   and those reads are four blocking round-trips to the hub — the one real loop-time cost in the
   drivetrain. Nobody watches the amps most of the time, so the default now costs nothing and you

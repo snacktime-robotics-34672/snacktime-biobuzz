@@ -76,4 +76,11 @@ echo
 echo "Changes to tuning/ (this is what will be committed):"
 git status --short tuning/ 2>/dev/null || true
 echo
-echo "Next:  git add tuning/ && git commit -m \"Tune $robot: <what changed>\" && git push"
+echo "Next — on a BRANCH, never on master:"
+echo "  git switch -c <yourname>/tune-$robot     # skip if you are already on your branch"
+echo "  git add tuning/"
+echo "  git commit -m \"Tune $robot: <what changed>\""
+echo "  git push -u origin <yourname>/tune-$robot"
+echo
+echo "Then open the pull request from the link git prints. master only takes changes"
+echo "through a reviewed pull request, so a push straight to master is refused."
