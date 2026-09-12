@@ -20,6 +20,9 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-11
+- **Pull requests now request their reviewers automatically.** `.github/CODEOWNERS` names the two
+  adult admins, so GitHub asks them for a review the moment a request opens and nothing sits waiting
+  for somebody to remember to look.
 - **Settled who approves a pull request: Aaron or the other adult admin, nobody else.** Students open
   requests but do not approve each other's, so every change is read by an adult before it can reach the
   competition robot. The cost is a bottleneck on bench nights, accepted deliberately.

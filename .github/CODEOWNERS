@@ -1,0 +1,9 @@
+# Code owners — FTC 34672
+#
+# GitHub auto-requests a review from these accounts on every pull request, so nothing
+# sits unnoticed waiting for somebody to remember. Approval policy is in CLAUDE.md §12
+# and .github/CONTRIBUTING.md: only these two approve, students never approve each other.
+#
+# Owners must have write access to the repo, which both of these do (org admins).
+
+*   @atkinsonaaron @cmyers734
