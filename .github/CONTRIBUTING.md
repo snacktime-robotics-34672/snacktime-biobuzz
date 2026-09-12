@@ -1,68 +1,77 @@
-# Contributing to the FTC SDK
+# Contributing — Snack Time Robotics, FTC 34672
 
-The following is a set of guidelines for contributing the FIRST FTC SDK.  The FTC Technology Team welcomes suggestions for improvements to core software, ideas for new features, requests for built-in support of new sensors, and well written bug reports.
+This replaces the FTC SDK's own contributing notes, which were about sending changes to the official
+SDK. This file is about **our** repo.
 
-## How can I contribute?
+**Read `CLAUDE.md` first.** It is the operating charter. Everything below is how you put work into the
+repo without breaking it.
 
-### Pull requests
+## Who works here
 
-__STOP!__  If you are new to git, do not understand the mechanics of forks, branches, and pulls, if what you just read is confusing, __do not__ push this button.  Most likely it won't do what you think it will.
+- **Coach (Aaron)** describes the behaviour the robot should have, in plain language.
+- **Student programmers** direct the AI the same way, and are the human reviewers at the code level.
+  They read, integrate and test what the AI produces.
+- **The AI** generates code against the charter, writes its own telemetry and documentation, and
+  **explains anything a student asks about**. Asking is the workflow, not an admission.
 
-![Pull Button](../doc/media/PullRequest.PNG)
+Nothing goes on the competition robot unless a student can say out loud what it does *and defend why
+it is built that way* (the Explain-It Gate, `CLAUDE.md` §1).
 
-If you are looking at this button then you've pushed some changes to your team's fork of ftctechnh/ftc_app.  Congratulations!  You are almost certainly finished.
+## Getting work in
 
-The vast majority of pull requests seen on the ftctechnh/ftc_app repository are not intended to be merged into the official SDK.  Team software is just that, your team's.  It's specific to the tasks you are trying to accomplish, the testing you are doing, and goals your team has.  You don't want that pushed into the official SDK.
+`master` is competition-ready at all times, and **it refuses a direct push**. The GitHub ruleset
+"Review Before Merging" requires a pull request with one approving review. Org admins bypass it; that
+is the emergency escape hatch, not the normal path.
 
-If what you've read so far makes little sense, there are some very good git learning resources online.  
-[Git Book](https://git-scm.com/book/en/v2)  
-[Interactive Git Tutorial](https://try.github.io)
+```bash
+# before you start
+git status
+git switch master
+git pull --ff-only
+git switch -c yourname/what-you-are-doing
 
-### Guidlines for experienced GIT users.
+# when it works
+git branch --show-current
+git status
+git add <the files you changed>       # never `git add .`
+git commit -m "What the robot can now do"
+git show --stat
 
-If you are absolutely certain that you want to push the big green button above, read on.  Otherwise back _slowly away from keyboard_.
+# check master did not move under you
+git fetch origin
+git log --oneline HEAD..origin/master  # nothing printed = you match master
+                                       # lines printed = git merge origin/master
 
-The real intent for advanced users is often to issue a pull request from the [branch](https://www.atlassian.com/git/tutorials/using-branches/git-branch) on a local fork back to master on either the same local fork or a child of the team fork and not on the parent ftctechnh/ftc_app.  See [Creating a Pull Request](https://help.github.com/articles/creating-a-pull-request-from-a-fork/).
+# send it in
+git push -u origin yourname/what-you-are-doing
+```
 
-If that is indeed the intent, then you can merge your [topic branch](https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows#Topic-Branches) into master locally by hand before pushing it up to github, or if you want a pull request for pulls between branches on the same repository because, say, you want team members to look at your software before merging into master, you can select the base fork from the dropdown on the "Open a pull request" page and select your team repo instead of ftctechnh's.
+The push prints a link. Open it and click **Create pull request**, or run `gh pr create --fill`. Fill
+in the template — it is the charter checklist, and it is faster to tick than to argue about later.
 
-Alternatively, if you have a team repository forked from ftctechnh/ftc_app, and then team members individually fork from your team repository, then pull requests from the individual team member's forks will have the main team repository automatically selected as the base fork for the pull. And you won't inadvertently request to pull your team software into ftctechnh's repository.
+GitHub never lets you approve your own pull request. That is the point: somebody else reads it.
 
-The latter would be the "best" way to manage software among a large team. But as with all things git there are many options.
+## Four commands nobody types here
 
-Pull requests that do not fall into the category above are evaluated by the FTC Technology Team on a case-by-case basis.  Please note however that the deployment model of the SDK does not support direct pulls into ftctechnh/ftc_app.  
+`git reset --hard` · `git push --force` · `git clean -fd` · `git checkout .`
 
-### Report bugs
+Each throws work away with no undo, and none of them is ever the answer to a confusing message. A
+confusing git message is a question, not a command.
 
-This section guides you through filing a bug report.  The better the report the more likely it is to be root caused and fixed.  Please refrain from feature requests or software enhancements when opening new issues.  See Suggesting Enhancements below.
+## Tuned numbers are code
 
-#### Before submitting a bug report
+Values you turn in Panels live in the robot's memory, then in a file on the hub, and only count once
+they are **committed**. Pull the hub's file with `./save-tuning.sh` and commit the file the robot
+wrote — never transcribe numbers into source. Full procedure in `tuning/README.md`.
 
-- Check the [forums](http://ftcforum.firstinspires.org/forum.php) to see if someone else has run into the problem and whether there is an official solution that doesn't require a new SDK.
+## Every change carries its own paperwork
 
-- Perform a search of current [issues](https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues) to see if the problem has already been reported.  If so, add a comment to the existing issue instead of creating a new one.
+- A `CHANGELOG.md` line, in plain English: what changed and why (`CLAUDE.md` §12).
+- A commit message describing the behaviour, not the files.
+- Off-robot unit tests for any real maths (`CLAUDE.md` §9). CI runs them on every pull request.
 
-#### How Do I Submit A (Good) Bug Report?
+## Adding a library is a stop-and-ask
 
-Bugs are tracked as GitHub issues. Create an issue on ftctechnh/ftc_app and provide the following information.
-Explain the problem and include additional details to help maintainers reproduce the problem:
-
-- Use a clear and descriptive title for the issue to identify the problem.
-
-- Describe the exact steps which reproduce the problem in as many details as possible.
-
-- Provide specific examples to demonstrate the steps.
-
-- Describe the behavior you observed after following the steps and point out what exactly is the problem with that behavior. Explain which behavior you expected to see instead and why. If applicable, include screenshots which show you following the described steps and clearly demonstrate the problem.
-
-- If you're reporting that the RobotController crashed, include the logfile with a stack trace of the crash.  [Example of good bug report with stack trace](https://github.com/ftctechnh/ftc_app/issues/224)
-
-- If the problem wasn't triggered by a specific action, describe what you were doing before the problem happened and share more information using the guidelines below.
-
-### Suggesting Enhancements
-
-FIRST volunteers are awesome.  You all have great ideas and we want to hear them.  
-
-Enhancements should be broadly applicable to a large majority of teams, should not force teams to change their workflow, and should provide real value to the mission of FIRST as it relates to engaging youth in engineering activities.
-
-The best way to get momentum behind new features is to post a description of your idea in the discussions section of this repository.  Build community support for it.  The FTC Technology Team monitors the discussions.  We'll hear you and if there's a large enough call for the feature it's very likely to get put on the list for a future release.
+Adding, upgrading or swapping any Gradle dependency is the highest-consequence change in this repo:
+it forces a full install and can silently break Sloth hot reload or the dashboard. Never do it in a
+pull request without asking first (`CLAUDE.md` §6).

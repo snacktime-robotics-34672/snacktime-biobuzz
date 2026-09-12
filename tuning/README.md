@@ -117,15 +117,24 @@ git diff tuning/
 Read the diff before committing. You should recognise the numbers you turned. If a value you did not
 touch has changed, find out why before pushing it.
 
-## Step 6 — Commit and push
+## Step 6 — Commit and open a pull request
+
+A tuned number is code. It goes back the same way code does: on a branch, through a pull request that
+somebody else reads. **`master` refuses a direct push** — the "Review Before Merging" ruleset requires
+a pull request with one approving review. Org admins bypass it; nobody else does.
 
 ```bash
+git switch -c yourname/tune-comp        # skip if you are already on your branch
 git add tuning/
 git commit -m "Tune comp: drive PIDF after the Friday practice field"
-git push origin master
+git push -u origin yourname/tune-comp
 ```
 
-Say what changed and why, in plain words. We commit straight to `master`.
+Say what changed and why, in plain words. The push prints a link — open it and click **Create pull
+request**, or run `gh pr create --fill`.
+
+Branch *before* you tune when you can. If you already committed onto local `master`,
+`git switch -c yourname/tune-comp` brings the work with you.
 
 ## Step 7 — Confirm it is on GitHub
 
@@ -195,7 +204,7 @@ never silently loads the other robot's tuning.
 | `no tuning file yet` at init | Fresh or re-flashed hub | Normal. Restore with `adb push`, or tune and save to create it |
 | `*** n NOT RESTORED ***` at init | A value saved but could not be read back | The robot is on the in-code default for it. The log names the field — report it |
 | A value you set is back to its old number | The file was loaded over your edit | Change it, wait a second for the autosave, confirm, then re-init |
-| Your commit is not on GitHub | The push failed | `git push origin master` again and read the error |
+| Your commit is not on GitHub | The push failed | Read the error. "protected branch" or "pull request required" means you were on `master` — `git switch -c yourname/tune-comp` and push that |
 
 ## What is NOT in these files
 

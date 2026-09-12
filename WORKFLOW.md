@@ -141,7 +141,9 @@ When something's wrong, work top-down:
   one change without losing others.
 - **Changelog every change** (the AI writes the entry) so "undo the intake change" maps to a commit.
 - **Tag known-good builds** at each event (`comp-ready`, `quals-1-working`) for one-command rollback.
-- **Experiment on branches**; keep `main` always competition-ready.
+- **Everything reaches `master` through a pull request** — branch, push the branch, one other
+  person approves. Only org admins can push `master` directly, and that is for emergencies, not
+  for convenience. Keep `master` always competition-ready.
 - To undo with the AI: *"Roll back the change that broke X"* → it reads `CHANGELOG.md`, finds the
   entry, and reverts the matching commit.
 

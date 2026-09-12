@@ -371,6 +371,13 @@ code, not memory:
 - **`GameMechanism`** is still a template. Fill in at kickoff, and add it to
   `Persistence.TUNING_CLASSES`.
 
+**Waiting on the comp robot (agreed 2026-09-11 to do next session):**
+- Two `Drivetrain` flags are `false` in code and in committed `tuning/comp_tuning.json`, but the hub's
+  own file still says `true` and the file wins at init: `currentMonitorEnabled` (defaulted off
+  2026-09-11 for loop time — four blocking hub round-trips per loop) and `holdWhenIdleEnabled`
+  (stand-your-ground, turned off in Panels 2026-09-07 but never saved back). Each is one Panels flip
+  with the **apply-all icon**, then `./save-tuning.sh`, then a PR.
+
 **Housekeeping:**
 - **SETTLED 2026-09-11: students work on branches and open pull requests.** See "Decisions still
   standing". One question is still open — **who approves**: Aaron every time, or Kieran and Elijah

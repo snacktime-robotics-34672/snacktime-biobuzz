@@ -7,6 +7,8 @@ file here exists to serve one of its rules. This README just maps the tree to th
 `WORKFLOW.md` is the day-to-day playbook (how to actually work against the charter), and
 `CHANGELOG.md` is the plain-language history of changes; per CLAUDE.md §12 the AI adds an entry for
 every change it makes, so undo and rollback stay easy.
+`.github/CONTRIBUTING.md` is the short version for students: how to branch, what to check, and how to
+open the pull request that gets your work onto `master`.
 
 ## Stack
 **Java** · FTC SDK (Control Hub) · **SolversLib** (commands/subsystems; maintained FTCLib fork) ·

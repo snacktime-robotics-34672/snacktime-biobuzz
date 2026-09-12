@@ -532,8 +532,14 @@ must know exactly what to revert):
 - **Keep a plain-language `CHANGELOG.md`** at the repo root: one dated, plain-English line per
   meaningful change — what changed and why. It's the human-readable bridge between "what did we
   change last week" and "which commit to revert," and it's what makes AI-assisted undo reliable.
-- **Experiment on branches.** Do risky or exploratory generation on a branch and keep `main` always
-  competition-ready; if it doesn't pan out, delete the branch — nothing on main to undo.
+- **Experiment on branches.** Do risky or exploratory generation on a branch and keep `master`
+  always competition-ready; if it doesn't pan out, delete the branch — nothing on master to undo.
+- **`master` takes changes through a pull request** (settled 2026-09-11). The GitHub ruleset
+  "Review Before Merging" requires a pull request with one approving review, and blocks deletions and
+  force-pushes. **Org admins bypass it** — today that is Aaron and one other adult — so a change
+  pushed from an admin account is reviewed by nobody. Treat that bypass as the 11pm-before-a-qualifier
+  escape hatch, not the normal path. Students (write access) are genuinely gated: branch → push →
+  pull request → somebody else approves. GitHub never lets an author approve their own request.
 
 **AI rule — NON-NEGOTIABLE:** every change the AI makes adds its own `CHANGELOG.md` entry and a
 commit message describing what changed and why. The log stays trustworthy only if keeping it current

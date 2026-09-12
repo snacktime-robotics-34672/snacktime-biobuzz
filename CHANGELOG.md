@@ -20,6 +20,18 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-11
+- **The written docs now match the pull-request rule.** `tuning/README.md` still said "we commit
+  straight to `master`" and told you to run `git push origin master`, which the repo refuses.
+  `WORKFLOW.md` and `CLAUDE.md` §12 both said to keep `main` competition-ready — we have no `main`.
+  All three now describe branch → push → pull request, and `CLAUDE.md` records who bypasses the rule
+  and that the bypass is an emergency path, not the normal one.
+- **Replaced the FTC SDK's contributing notes with ours.** `.github/CONTRIBUTING.md` was upstream
+  boilerplate about sending changes to the official SDK — a student following it would have read about
+  forking `ftctechnh/ftc_app`. It is now the short version of how work gets into this repo, including
+  the four commands nobody types here.
+- **The pull-request template is now the charter checklist.** It was one line pointing at the
+  contributing page. It now asks what the robot can do, how it was checked, whether the loop got
+  slower, and ticks for timeouts, tunables, allocation, unit tests and the changelog.
 - **`save-tuning.sh` now tells you to open a pull request, not to push.** Its closing "Next:" line
   still said `git add && git commit && git push`, which is refused on master and would have sent a
   student chasing an error message. It now prints the branch-and-pull-request version and says why a
