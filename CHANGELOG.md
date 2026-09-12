@@ -19,6 +19,14 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-11
+- **The drive current monitor is now OFF by default.** It reads the four motor currents every loop,
+  and those reads are four blocking round-trips to the hub — the one real loop-time cost in the
+  drivetrain. Nobody watches the amps most of the time, so the default now costs nothing and you
+  turn it on in Panels when you are chasing a motor fault. The TeleOp amp readouts only appear while
+  it is on, so nothing shows a misleading zero.
+  (`subsystems/Drivetrain.java`, `tuning/comp_tuning.json`)
+
 ## 2026-09-07
 - **Wrote down how Panels commits a boolean.** Picking `false` in a dropdown and pressing ENTER
   stages the change but never sends it — you have to click the apply-all icon in the Configurables

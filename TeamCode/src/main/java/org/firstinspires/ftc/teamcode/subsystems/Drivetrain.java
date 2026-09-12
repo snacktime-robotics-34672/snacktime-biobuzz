@@ -68,9 +68,13 @@ public class Drivetrain extends SubsystemBase {
     // ---- Drive current monitor --------------------------------------------------------------
 
     /**
-     * Watch the total current the four drive motors pull. ON by default so it is there when you
-     * want it, but it is NOT free: this is the one flag in this file that costs real loop time
-     * (CLAUDE.md §0), so turn it off in Panels for a match.
+     * Watch the total current the four drive motors pull. OFF by default, because it is the one
+     * flag in this file that costs real loop time (CLAUDE.md §0). Turn it on in Panels when you are
+     * chasing a motor fault, and turn it back off when you are done.
+     *
+     * CHANGED 2026-09-11: this used to default ON, so every OpMode paid for it whether or not
+     * anyone was watching the numbers. The prime directive says the loop wins, so the default now
+     * costs nothing and you opt in.
      *
      * WHY IT COSTS: motor current is NOT part of the bulk read, unlike encoder positions. Checked
      * against the SDK — LynxDcMotorController.getMotorCurrent() has no bulk-cache path at all. It
@@ -82,7 +86,7 @@ public class Drivetrain extends SubsystemBase {
      * you enable this. Turning it off removes the reads and the per-motor readouts; nothing else
      * changes.
      */
-    public static boolean currentMonitorEnabled = true;
+    public static boolean currentMonitorEnabled = false;
 
     /** Per-motor amps from the last read, named for the config (LF_Motor, LR_Motor, ...). */
     private double lfAmps = 0.0, lrAmps = 0.0, rfAmps = 0.0, rrAmps = 0.0;

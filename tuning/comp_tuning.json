@@ -4,7 +4,7 @@
   "TuningConfig.pedroTuningLoadEnabled": true,
   "TuningConfig.profilerEnabled": false,
   "TuningConfig.verboseTelemetry": false,
-  "Drivetrain.currentMonitorEnabled": true,
+  "Drivetrain.currentMonitorEnabled": false,
   "Drivetrain.driveSlowModeCap": 0.35,
   "Drivetrain.driveSpeedCap": 1.0,
   "Drivetrain.driveToPoseTimeoutSec": 5.0,
