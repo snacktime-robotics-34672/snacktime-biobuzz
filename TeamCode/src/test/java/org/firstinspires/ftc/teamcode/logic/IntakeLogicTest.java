@@ -54,6 +54,22 @@ public class IntakeLogicTest {
     }
 
     @Test
+    public void invertedSideRunsTheOppositeWay() {
+        assertEquals(-0.8, IntakeLogic.sidePower(0.8, true), EPS);
+        assertEquals(0.8, IntakeLogic.sidePower(0.8, false), EPS);
+        // Ejecting: both sides flip together, so they still counter-rotate.
+        assertEquals(0.8, IntakeLogic.sidePower(-0.8, true), EPS);
+    }
+
+    @Test
+    public void stoppedStaysExactlyZeroOnBothSides() {
+        // Not -0.0: the subsystem compares the commanded power to decide whether to skip a hub
+        // write, and -0.0 == 0.0 is true in Java but the sign would still reach the motor.
+        assertEquals(0.0, IntakeLogic.sidePower(0.0, true), EPS);
+        assertEquals(1.0, Math.copySign(1.0, IntakeLogic.sidePower(0.0, true)), EPS);
+    }
+
+    @Test
     public void clampPassesValuesInsideTheLimitThrough() {
         assertEquals(0.3, IntakeLogic.clamp(0.3, 1.0), EPS);
         assertEquals(-0.3, IntakeLogic.clamp(-0.3, 1.0), EPS);

@@ -14,22 +14,33 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
 
 /**
- * Intake — the one motor that pulls game pieces in.
+ * Intake — the two motors that pull game pieces in.
  *
- * WHAT IT OWNS: the intake motor, and nothing else. Because the scheduler knows this subsystem owns
- * that motor, two commands can never fight over it (CLAUDE.md §3).
+ * WHAT IT OWNS: both intake motors, L_INTAKE and R_INTAKE, and nothing else. Because the scheduler
+ * knows this subsystem owns them, two commands can never fight over the same motor (CLAUDE.md §3).
+ *
+ * WHY ONE SUBSYSTEM AND NOT TWO: the two motors are one mechanism. They always start together, stop
+ * together, and run at the same speed — nothing ever wants the left roller without the right one.
+ * Splitting them into two subsystems would let a command claim half an intake, which is a fault we
+ * would have to guard against rather than a capability we want.
+ *
+ * WHICH WAY THEY SPIN: most two-sided intakes counter-rotate — the rollers turn toward each other to
+ * pull a piece in, so the two motors run opposite directions. {@link #rightInverted} handles that and
+ * it is a LIVE flag: if the intake spits pieces out instead of pulling them in, flip it in Panels and
+ * try again, no deploy. See the bench procedure on that field.
  *
  * WHAT IT EXPOSES: intent, not power — {@link #intake()} and {@link #stop()}. The OpMode says what
- * it wants; how hard the motor runs is a tunable in this file, turned in Panels while the robot is
+ * it wants; how hard the motors run is a tunable in this file, turned in Panels while the robot is
  * running (§6 Tier 1).
  *
  * HOW TO TELL IF IT IS WORKING: the Driver Hub shows "Intake" as ON or off. At the bench, turn on
- * {@code currentMonitorEnabled} in Panels and watch the amps — a jammed intake pulls hard current
- * while the power number says it should be spinning freely.
+ * {@code currentMonitorEnabled} in Panels and watch the two amp readings SIDE BY SIDE — one roller
+ * pulling much harder than the other is a jam, a dragging bearing, or a belt about to go, and a
+ * single combined number would average that away (the same reasoning as per-wheel drive telemetry, §5).
  *
- * LOOP COST: one motor write per loop while the intake runs, and nothing at all when it is stopped
- * (see {@link #setPower(double)} — repeat writes of the same value are skipped). The current read
- * is the one real cost here and it is OFF by default, same reasoning as the drive current monitor.
+ * LOOP COST: two motor writes per loop while the intake runs, and none at all when it is stopped
+ * (see {@link #setPower(double)} — repeat writes of the same value are skipped). The current reads
+ * are the real cost here and they are OFF by default.
  */
 @Configurable
 public class Intake extends SubsystemBase {
@@ -37,12 +48,29 @@ public class Intake extends SubsystemBase {
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
 
     /**
-     * Power the intake runs at while the trigger is held, -1..1. Start low and raise it until
-     * pieces feed cleanly — a too-fast intake spits pieces back out as often as a too-slow one
-     * fails to grab them. Negative runs the motor the other way, which is the quick fix if the
-     * intake turns out to be wired backwards.
+     * Power the intake runs at while the trigger is held, -1..1. Both motors run at this speed.
+     * Start low and raise it until pieces feed cleanly — a too-fast intake spits pieces back out as
+     * often as a too-slow one fails to grab them. Negative runs BOTH motors the other way, which
+     * ejects; it is also the quick fix if the whole intake turns out to be wired backwards.
      */
     public static double intakePower = 0.8;
+
+    /**
+     * Does the right motor run opposite the left one? True for a normal counter-rotating intake,
+     * where the two rollers turn toward each other to pull a piece in.
+     *
+     * BENCH PROCEDURE — get this right before tuning anything else:
+     *   1. Hold the trigger with no game piece and watch the rollers.
+     *   2. Both rollers should pull INWARD, toward the middle of the robot.
+     *   3. If they fight each other (one in, one out), flip this in Panels.
+     *   4. If both push OUTWARD together, this flag is right but the whole intake is backwards —
+     *      make {@code intakePower} negative instead.
+     *
+     * This is a live flag rather than a motor direction set once at init, on purpose: a direction
+     * set at init only changes with a redeploy, and this is exactly the number you want to try both
+     * ways in ten seconds on the bench.
+     */
+    public static boolean rightInverted = true;
 
     /**
      * How far the trigger must be squeezed before the intake turns on, 0..1. This is a dead band,
@@ -67,62 +95,81 @@ public class Intake extends SubsystemBase {
     public static double intakeTimeoutSec = 15.0;
 
     /**
-     * Watch the intake motor's current draw. OFF by default because it costs loop time: motor
-     * current is NOT part of the bulk read, so each reading is a blocking round-trip to the hub
-     * (the same reason Drivetrain.currentMonitorEnabled defaults off). Turn it on at the bench when
-     * you are chasing a jam or a weak intake, then turn it back off.
+     * Watch both intake motors' current draw. OFF by default because it costs loop time: motor
+     * current is NOT part of the bulk read, so each reading is a blocking round-trip to the hub —
+     * two motors means two of them, every loop (the same reason Drivetrain.currentMonitorEnabled
+     * defaults off). Turn it on at the bench when you are chasing a jam or a weak roller, then turn
+     * it back off and watch Loop Hz recover.
      */
     public static boolean currentMonitorEnabled = false;
 
     // ---- Hardware ---------------------------------------------------------------------------
 
-    /** Config name must match the Robot Controller configuration on BOTH robots (§10). */
-    public static final String MOTOR_NAME = "intake_motor";
+    /** Config names must match the Robot Controller configuration on BOTH robots (§10). */
+    public static final String LEFT_MOTOR_NAME = "L_INTAKE";
+    public static final String RIGHT_MOTOR_NAME = "R_INTAKE";
 
-    private final MotorEx motor;
+    private final MotorEx left;
+    private final MotorEx right;
 
-    /** What we last told the motor to do. Read by telemetry; also used to skip repeat writes. */
+    /**
+     * What we last told the LEFT motor to do — the mechanism's power, before the right motor's
+     * inversion. Read by telemetry; also used to skip repeat writes.
+     */
     private double commandedPower = 0.0;
 
-    /** Most recent current reading, amps. Stays 0 while the monitor is off. */
-    private double amps = 0.0;
+    /** Whether the last write used rightInverted, so a live flip is noticed and re-written. */
+    private boolean lastRightInverted = rightInverted;
+
+    /** Most recent current readings, amps. Stay 0 while the monitor is off. */
+    private double leftAmps = 0.0;
+    private double rightAmps = 0.0;
 
     public Intake(HardwareMap hardwareMap) {
-        // Throws at init if the motor is missing from the hub configuration — deliberate. A missing
-        // intake must stop the OpMode on the bench, not surface as a dead mechanism mid-match
-        // (§5 deterministic init, fail loud).
-        motor = new MotorEx(hardwareMap, MOTOR_NAME);
+        // Throws at init if either motor is missing from the hub configuration — deliberate. A
+        // half-present intake must stop the OpMode on the bench, not surface as one dead roller
+        // mid-match (§5 deterministic init, fail loud).
+        left = new MotorEx(hardwareMap, LEFT_MOTOR_NAME);
+        right = new MotorEx(hardwareMap, RIGHT_MOTOR_NAME);
 
         // BRAKE, so releasing the trigger stops the rollers now instead of letting them coast a
         // piece further in. Change to FLOAT if the intake needs to spin down gently.
-        motor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        motor.set(0.0);
+        left.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+        right.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+
+        left.set(0.0);
+        right.set(0.0);
     }
 
     // ---- Intent-level methods ---------------------------------------------------------------
 
-    /** Runs the intake at the tuned power, capped by {@link #maxPower}. */
+    /** Runs both rollers at the tuned power, capped by {@link #maxPower}. */
     public void intake() {
         setPower(IntakeLogic.clamp(intakePower, maxPower));
     }
 
-    /** Stops the intake. Safe to call repeatedly. */
+    /** Stops both rollers. Safe to call repeatedly. */
     public void stop() {
         setPower(0.0);
     }
 
     /**
-     * Sends power to the motor, clamped to the safety cap.
+     * Sends power to both motors, clamped to the safety cap. The right motor gets the opposite sign
+     * when {@link #rightInverted} is set.
      *
-     * Repeat writes of the same value are skipped. A motor write is a hub round-trip, and an intake
-     * spends most of a match sitting at one value — usually zero — so this keeps the prime
-     * directive's budget (§0) for the loops that need it.
+     * Repeat writes of the same value are skipped. A motor write is a hub round-trip and there are
+     * two of them here, while an intake spends most of a match sitting at one value — usually zero
+     * — so this keeps the prime directive's budget (§0) for the loops that need it. Flipping
+     * rightInverted in Panels also counts as a change, so a live flip takes effect on the next loop
+     * rather than waiting for the power to change.
      */
     public void setPower(double power) {
         double safe = IntakeLogic.clamp(power, maxPower);
-        if (safe == commandedPower) return;
+        if (safe == commandedPower && rightInverted == lastRightInverted) return;
         commandedPower = safe;
-        motor.set(safe);
+        lastRightInverted = rightInverted;
+        left.set(safe);
+        right.set(IntakeLogic.sidePower(safe, rightInverted));
     }
 
     /** True while the intake is being driven. What the Driver Hub shows (§8). */
@@ -130,14 +177,19 @@ public class Intake extends SubsystemBase {
         return commandedPower != 0.0;
     }
 
-    /** The power last sent to the motor. */
+    /** The mechanism power last commanded — what the LEFT motor was sent. */
     public double getCommandedPower() {
         return commandedPower;
     }
 
-    /** Most recent current reading in amps, or 0 while {@link #currentMonitorEnabled} is off. */
-    public double getAmps() {
-        return amps;
+    /** Left roller (L_INTAKE) amps, most recent reading, or 0 while the monitor is off. */
+    public double getLeftAmps() {
+        return leftAmps;
+    }
+
+    /** Right roller (R_INTAKE) amps, most recent reading, or 0 while the monitor is off. */
+    public double getRightAmps() {
+        return rightAmps;
     }
 
     // ---- Command wrappers -------------------------------------------------------------------
@@ -153,16 +205,22 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // One hub round-trip, only when someone asked for it (see currentMonitorEnabled).
+        // Two hub round-trips, only when someone asked for them (see currentMonitorEnabled).
         if (currentMonitorEnabled) {
-            amps = motor.getCurrent(CurrentUnit.AMPS);
+            leftAmps = left.getCurrent(CurrentUnit.AMPS);
+            rightAmps = right.getCurrent(CurrentUnit.AMPS);
         }
 
         // Bench detail, off during matches (§4 rule 8). Numbers, not built strings.
         if (TuningConfig.verboseTelemetry) {
             TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
             panels.addData("intake power", commandedPower);
-            if (currentMonitorEnabled) panels.addData("intake amps", amps);
+            if (currentMonitorEnabled) {
+                // Side by side on purpose — one roller working harder than the other is the fault
+                // you are looking for, and a total would hide it.
+                panels.addData("intake L amps", leftAmps);
+                panels.addData("intake R amps", rightAmps);
+            }
         }
     }
 }

@@ -30,9 +30,10 @@ public class SystemsCheck extends LinearOpMode {
     // Add game-mechanism motors here when they are wired and configured.
     private static final String[] MOTOR_NAMES = {
             "LF_Motor", "LR_Motor", "RF_Motor", "RR_Motor",
-            // Game mechanisms. The pulse below spins each one briefly — watch that the INTAKE moves
-            // and not something else, which is how a swapped port shows up on the bench.
-            Intake.MOTOR_NAME
+            // Game mechanisms. The pulse below spins each one briefly, one at a time — watch that
+            // the named roller is the one that moves. A swapped L/R port passes every other check
+            // and only shows up here.
+            Intake.LEFT_MOTOR_NAME, Intake.RIGHT_MOTOR_NAME
     };
 
     @Override

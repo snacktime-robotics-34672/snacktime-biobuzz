@@ -39,6 +39,22 @@ public final class IntakeLogic {
         return clamp(power, maxPower);
     }
 
+    /**
+     * Power for one side of a two-motor intake.
+     *
+     * A counter-rotating intake runs its two rollers toward each other, so one motor takes the
+     * opposite sign. Zero stays exactly zero either way — a stopped motor has no direction, and
+     * -0.0 would compare unequal to 0.0 in the subsystem's "skip repeat writes" check.
+     *
+     * @param power    the mechanism's power, -1..1
+     * @param inverted true if this side runs opposite the other one
+     * @return power, negated when inverted
+     */
+    public static double sidePower(double power, boolean inverted) {
+        if (power == 0.0) return 0.0;
+        return inverted ? -power : power;
+    }
+
     /** Clamps value to [-limit, limit]. A negative limit is treated as 0 — no power at all. */
     public static double clamp(double value, double limit) {
         double safeLimit = Math.max(0.0, limit);
