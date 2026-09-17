@@ -28,7 +28,9 @@ one-command rollback target is easy to find later.
   stop together. The right one runs the opposite way by default, so the rollers pull toward each
   other; if they fight each other on the bench, flip `rightInverted` in Panels instead of rewiring.
   Both motors are in Systems Check and each reports its own current, so one weak or jammed roller is
-  visible next to the other. (subsystems/Intake, commands/IntakeCommand, opmodes/TeleOpExample,
+  visible next to the other. The two motors sit on the **Expansion Hub** (ports 0 and 1) — the first
+  devices we run off the Control Hub — so their writes cross a slower link; watch Loop Hz the first
+  time this runs on the robot. (subsystems/Intake, commands/IntakeCommand, opmodes/TeleOpExample,
   opmodes/SystemsCheck, logic/IntakeLogic)
 
 ## 2026-09-11

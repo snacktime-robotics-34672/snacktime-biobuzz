@@ -460,7 +460,8 @@ Persistent control/sensor suite (carries across seasons):
 
 | Role | Device | Bus | Notes |
 |------|--------|-----|-------|
-| Controller | REV Control Hub | — | MANUAL bulk caching |
+| Controller | REV Control Hub | — | drive motors, Pinpoint; MANUAL bulk caching |
+| Expansion hub | REV Expansion Hub | RS485 | intake motors; MANUAL bulk caching too — `util/BulkReads` sets and clears EVERY hub, so a second hub needs no code change. It is a second bulk read per loop, on a slower link than the Control Hub's own ports: watch Loop Hz (§0) |
 | Actuator hub | REV Servo Hub | — | needs RC + DS apps on 10.0+ to configure as a Servo Hub (else shows as generic Expansion Hub); firmware/address via REV Hardware Client |
 | Vision | Limelight 3A, config name `limelight` | USB 3.0 | detection on-device; used for relative **aiming, not pose** (§3); camera height/pitch are live tunables on `subsystems/Vision` |
 | Odometry | goBILDA Pinpoint (V2), config name `pinpoint` | I2C | **single source of pose (no fusion)**; read once/loop; mind wire routing/ferrite; pod offsets measured on-robot 2026-07-18 (`forwardPodY=6.735`, `strafePodX=0.287` in `pedroPathing/Constants.java`) |
@@ -469,11 +470,14 @@ Persistent control/sensor suite (carries across seasons):
 | Drivetrain LR | `LR_Motor` (port 1) | — | goBILDA Yellow Jacket |
 | Drivetrain RF | `RF_Motor` (port 2) | — | goBILDA Yellow Jacket |
 | Drivetrain RR | `RR_Motor` (port 3) | — | goBILDA Yellow Jacket |
-| Intake L | `L_INTAKE` (port TBD) | — | left roller; per-motor amp telemetry like the drive motors |
-| Intake R | `R_INTAKE` (port TBD) | — | right roller; runs opposite the left when `Intake.rightInverted` is set (live flag) |
+| Intake L | `L_INTAKE` (**Expansion Hub** port 0) | RS485 | left roller; per-motor amp telemetry like the drive motors |
+| Intake R | `R_INTAKE` (**Expansion Hub** port 1) | RS485 | right roller; runs opposite the left when `Intake.rightInverted` is set (live flag) |
 
 Both intake motors are one mechanism, owned by one subsystem (`subsystems/Intake`): they start,
-stop, and run together, and the TeleOp right trigger holds them on.
+stop, and run together, and the TeleOp right trigger holds them on. They are the first devices we
+run on the **Expansion Hub**, so every intake write crosses the RS485 link and costs more than a
+Control Hub write — the subsystem skips repeat writes for exactly this reason. The drive motors and
+the Pinpoint stay on the Control Hub.
 
 **Game-specific mechanisms** (fill in at kickoff — e.g. intake, delivery, lift): add each with
 its config name, port, and the intent-level methods its subsystem exposes. Keep any real mechanism

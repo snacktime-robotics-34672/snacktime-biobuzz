@@ -96,16 +96,24 @@ public class Intake extends SubsystemBase {
 
     /**
      * Watch both intake motors' current draw. OFF by default because it costs loop time: motor
-     * current is NOT part of the bulk read, so each reading is a blocking round-trip to the hub —
-     * two motors means two of them, every loop (the same reason Drivetrain.currentMonitorEnabled
-     * defaults off). Turn it on at the bench when you are chasing a jam or a weak roller, then turn
-     * it back off and watch Loop Hz recover.
+     * current is NOT part of the bulk read, so each reading is a blocking round-trip — two motors
+     * means two of them, every loop, and these round-trips go to the EXPANSION hub over RS485, so
+     * they cost more than the drive motors' do. Turn it on at the bench when you are chasing a jam
+     * or a weak roller, then turn it back off and watch Loop Hz recover.
      */
     public static boolean currentMonitorEnabled = false;
 
     // ---- Hardware ---------------------------------------------------------------------------
 
-    /** Config names must match the Robot Controller configuration on BOTH robots (§10). */
+    /**
+     * Config names must match the Robot Controller configuration on BOTH robots (§10).
+     *
+     * BOTH MOTORS LIVE ON THE EXPANSION HUB — L_INTAKE on port 0, R_INTAKE on port 1. That matters
+     * for loop time (§0): every write to them crosses the RS485 link to the second hub, which costs
+     * more than a write to a Control Hub port. It is why {@link #setPower(double)} skips writes that
+     * would not change anything, and why the current monitor below is off by default. Bulk reads
+     * need nothing special — util/BulkReads puts EVERY hub in MANUAL mode and clears them all.
+     */
     public static final String LEFT_MOTOR_NAME = "L_INTAKE";
     public static final String RIGHT_MOTOR_NAME = "R_INTAKE";
 
