@@ -10,6 +10,7 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.math.Vector;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
+import com.seattlesolvers.solverslib.command.button.Trigger;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -19,7 +20,9 @@ import java.util.Locale;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
+import org.firstinspires.ftc.teamcode.commands.IntakeCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
@@ -31,6 +34,7 @@ import org.firstinspires.ftc.teamcode.util.StandYourGround;
 
 /**
  * TeleOpExample — field-centric mecanum drive. LEFT_BUMPER = slow mode.
+ * RIGHT_TRIGGER = hold to run the intake.
  *
  * Pedro reads the Pinpoint heading and rotates stick inputs to field coordinates each loop.
  * Driver Hub telemetry is minimal and glanceable (CLAUDE.md sections 4, 8).
@@ -51,6 +55,7 @@ public class TeleOpExample extends CommandOpMode {
     private final TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
     private BulkReads bulkReads;
     private Drivetrain drivetrain;
+    private Intake intake;
     private GamepadEx driver;
     private Follower follower;
     private double startBatteryVolts = 0.0;
@@ -83,7 +88,26 @@ public class TeleOpExample extends CommandOpMode {
         LogCleanup.maybeRun(telemetry); // fires once every 14 days, silent otherwise
 
         drivetrain = new Drivetrain(hardwareMap);
+        intake = new Intake(hardwareMap);
         driver = new GamepadEx(gamepad1);
+
+        // RIGHT TRIGGER = hold to run the intake, release to stop.
+        //
+        // Trigger, not getGamepadButton: the SDK reports a trigger as an analog 0..1 value, not a
+        // button, so there is no button to bind. The Trigger wrapper turns "squeezed past the
+        // threshold" into the press/release edges the binding needs. The threshold is live-tunable
+        // (§6 Tier 1) — the lambda reads the static each time, so turning it in Panels takes effect
+        // without a redeploy.
+        //
+        // whileActiveOnce starts the command on the squeeze and cancels it on the release, and does
+        // NOT restart it in between. whileActiveContinuous would re-schedule the command every loop,
+        // restarting its timeout forever and defeating the safety net in IntakeCommand.
+        //
+        // The scheduler polls this binding inside super.run() below. No per-loop allocation: the
+        // lambda and the command are both built once, here at init (§4 rule 8).
+        new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)
+                > Intake.triggerThreshold)
+                .whileActiveOnce(new IntakeCommand(intake));
 
         // Pedro drives the wheels; startTeleopDrive() sets it to open-loop mode (§10).
         // The identity picks this robot's own Pedro tuning — comp and test drive differently.
@@ -198,6 +222,8 @@ public class TeleOpExample extends CommandOpMode {
         // whether the robot is braced or free, because the two feel very different on the sticks.
         // Constant strings, so no per-loop allocation (§4 rule 8).
         telemetry.addData("Drive", driveModeLabel(standYourGround.getState()));
+        // Intake state is on §8's Driver Hub list. Constant strings, so no per-loop allocation.
+        telemetry.addData("Intake", intake.isRunning() ? "ON" : "off");
         telemetry.addData("Loop Hz", loopTimer.getHz());
         telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
         telemetry.addData("X in", follower.getPose().getX());
@@ -286,6 +312,7 @@ public class TeleOpExample extends CommandOpMode {
         standYourGround.reset(); // drop any hold before the follower stops driving
         follower.breakFollowing();
         drivetrain.stop();
+        intake.stop(); // never leave the intake spinning after the OpMode ends
         Persistence.saveTuning(robotId);
         Persistence.Snapshot stopSnap = new Persistence.Snapshot();
         stopSnap.robot = robotId.robot.name();

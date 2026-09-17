@@ -16,6 +16,7 @@ import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Vision;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
@@ -94,6 +95,9 @@ public final class Persistence {
             // they must survive a restart like any other tuning.
             FieldTweaks.class,
             GameMechanism.class,
+            // The intake's power, trigger threshold, and safety caps. Tuned on the bench by feel,
+            // so losing them on stop would throw the session away.
+            Intake.class,
             // The camera transform: lens height, camera pitch, target height. You tune these by
             // watching VisionCalibration against a tape measure, so losing them on stop would throw
             // the whole session away.

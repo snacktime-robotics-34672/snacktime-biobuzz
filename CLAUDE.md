@@ -469,6 +469,7 @@ Persistent control/sensor suite (carries across seasons):
 | Drivetrain LR | `LR_Motor` (port 1) | — | goBILDA Yellow Jacket |
 | Drivetrain RF | `RF_Motor` (port 2) | — | goBILDA Yellow Jacket |
 | Drivetrain RR | `RR_Motor` (port 3) | — | goBILDA Yellow Jacket |
+| Intake | `intake_motor` (port TBD) | — | one motor; `subsystems/Intake` exposes `intake()` / `stop()`; TeleOp right trigger holds it on. **Config name and port are provisional — confirm against the hub configuration.** |
 
 **Game-specific mechanisms** (fill in at kickoff — e.g. intake, delivery, lift): add each with
 its config name, port, and the intent-level methods its subsystem exposes. Keep any real mechanism

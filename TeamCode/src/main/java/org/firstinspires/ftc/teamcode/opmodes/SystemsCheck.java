@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.util.LogCleanup;
 import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
@@ -28,7 +29,10 @@ public class SystemsCheck extends LinearOpMode {
     // Names must match the Robot Controller configuration exactly (CLAUDE.md §10).
     // Add game-mechanism motors here when they are wired and configured.
     private static final String[] MOTOR_NAMES = {
-            "LF_Motor", "LR_Motor", "RF_Motor", "RR_Motor"
+            "LF_Motor", "LR_Motor", "RF_Motor", "RR_Motor",
+            // Game mechanisms. The pulse below spins each one briefly — watch that the INTAKE moves
+            // and not something else, which is how a swapped port shows up on the bench.
+            Intake.MOTOR_NAME
     };
 
     @Override

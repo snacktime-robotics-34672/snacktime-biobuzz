@@ -19,6 +19,16 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-17
+- **The intake now runs while you hold the right trigger, and stops when you let go.** New `Intake`
+  subsystem (one motor) and `IntakeCommand`, bound to the driver's right trigger in TeleOp. Intake
+  speed, how far the trigger must be squeezed, a hard power cap, and a safety timeout are all live
+  knobs in Panels under "Intake" — no deploy needed to tune them. The Driver Hub shows Intake ON/off.
+  **The motor's config name is `intake_motor` and is a guess** — set it to match the hub
+  configuration on both robots before this runs. Also added to Systems Check, so a missing or
+  mis-wired intake fails on the bench instead of mid-match. (subsystems/Intake, commands/IntakeCommand,
+  opmodes/TeleOpExample, opmodes/SystemsCheck, logic/IntakeLogic)
+
 ## 2026-09-11
 - **Pull requests now request their reviewers automatically.** `.github/CODEOWNERS` names the two
   adult admins, so GitHub asks them for a review the moment a request opens and nothing sits waiting
