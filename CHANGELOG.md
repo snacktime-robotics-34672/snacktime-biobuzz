@@ -27,10 +27,11 @@ one-command rollback target is easy to find later.
   The intake is TWO motors, `L_INTAKE` and `R_INTAKE`, run as one mechanism — they always start and
   stop together. The right one runs the opposite way by default, so the rollers pull toward each
   other; if they fight each other on the bench, flip `rightInverted` in Panels instead of rewiring.
-  Both motors are in Systems Check and each reports its own current, so one weak or jammed roller is
-  visible next to the other. The two motors sit on the **Expansion Hub** (ports 0 and 1) — the first
-  devices we run off the Control Hub — so their writes cross a slower link; watch Loop Hz the first
-  time this runs on the robot. (subsystems/Intake, commands/IntakeCommand, opmodes/TeleOpExample,
+  Both motors are in Systems Check, which pulses them one at a time so a swapped port shows up on the
+  bench. The intake does not read motor current — the rollers are watched by eye, and the loop keeps
+  the round-trips. The two motors sit on the **Expansion Hub** (ports 0 and 1) — the first devices we
+  run off the Control Hub — so their writes cross a slower link; watch Loop Hz the first time this
+  runs on the robot. (subsystems/Intake, commands/IntakeCommand, opmodes/TeleOpExample,
   opmodes/SystemsCheck, logic/IntakeLogic)
 
 ## 2026-09-11

@@ -9,7 +9,6 @@ import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
 
@@ -33,14 +32,14 @@ import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
  * it wants; how hard the motors run is a tunable in this file, turned in Panels while the robot is
  * running (§6 Tier 1).
  *
- * HOW TO TELL IF IT IS WORKING: the Driver Hub shows "Intake" as ON or off. At the bench, turn on
- * {@code currentMonitorEnabled} in Panels and watch the two amp readings SIDE BY SIDE — one roller
- * pulling much harder than the other is a jam, a dragging bearing, or a belt about to go, and a
- * single combined number would average that away (the same reasoning as per-wheel drive telemetry, §5).
+ * HOW TO TELL IF IT IS WORKING: the Driver Hub shows "Intake" as ON or off, and Panels shows the
+ * commanded power when verboseTelemetry is on. The intake does NOT read motor current — the rollers
+ * are watched by eye and ear at the bench, and a current read is a blocking round-trip to the
+ * Expansion Hub that the loop should not pay for (§0). Add it back only if a fault turns up that
+ * cannot be seen any other way.
  *
- * LOOP COST: two motor writes per loop while the intake runs, and none at all when it is stopped
- * (see {@link #setPower(double)} — repeat writes of the same value are skipped). The current reads
- * are the real cost here and they are OFF by default.
+ * LOOP COST: two motor writes per loop while the intake runs, and NOTHING at all when it is stopped
+ * (see {@link #setPower(double)} — repeat writes of the same value are skipped).
  */
 @Configurable
 public class Intake extends SubsystemBase {
@@ -94,15 +93,6 @@ public class Intake extends SubsystemBase {
      */
     public static double intakeTimeoutSec = 15.0;
 
-    /**
-     * Watch both intake motors' current draw. OFF by default because it costs loop time: motor
-     * current is NOT part of the bulk read, so each reading is a blocking round-trip — two motors
-     * means two of them, every loop, and these round-trips go to the EXPANSION hub over RS485, so
-     * they cost more than the drive motors' do. Turn it on at the bench when you are chasing a jam
-     * or a weak roller, then turn it back off and watch Loop Hz recover.
-     */
-    public static boolean currentMonitorEnabled = false;
-
     // ---- Hardware ---------------------------------------------------------------------------
 
     /**
@@ -111,8 +101,8 @@ public class Intake extends SubsystemBase {
      * BOTH MOTORS LIVE ON THE EXPANSION HUB — L_INTAKE on port 0, R_INTAKE on port 1. That matters
      * for loop time (§0): every write to them crosses the RS485 link to the second hub, which costs
      * more than a write to a Control Hub port. It is why {@link #setPower(double)} skips writes that
-     * would not change anything, and why the current monitor below is off by default. Bulk reads
-     * need nothing special — util/BulkReads puts EVERY hub in MANUAL mode and clears them all.
+     * would not change anything. Bulk reads need nothing special — util/BulkReads puts EVERY hub in
+     * MANUAL mode and clears them all.
      */
     public static final String LEFT_MOTOR_NAME = "L_INTAKE";
     public static final String RIGHT_MOTOR_NAME = "R_INTAKE";
@@ -128,10 +118,6 @@ public class Intake extends SubsystemBase {
 
     /** Whether the last write used rightInverted, so a live flip is noticed and re-written. */
     private boolean lastRightInverted = rightInverted;
-
-    /** Most recent current readings, amps. Stay 0 while the monitor is off. */
-    private double leftAmps = 0.0;
-    private double rightAmps = 0.0;
 
     public Intake(HardwareMap hardwareMap) {
         // Throws at init if either motor is missing from the hub configuration — deliberate. A
@@ -190,16 +176,6 @@ public class Intake extends SubsystemBase {
         return commandedPower;
     }
 
-    /** Left roller (L_INTAKE) amps, most recent reading, or 0 while the monitor is off. */
-    public double getLeftAmps() {
-        return leftAmps;
-    }
-
-    /** Right roller (R_INTAKE) amps, most recent reading, or 0 while the monitor is off. */
-    public double getRightAmps() {
-        return rightAmps;
-    }
-
     // ---- Command wrappers -------------------------------------------------------------------
 
     /**
@@ -213,22 +189,10 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Two hub round-trips, only when someone asked for them (see currentMonitorEnabled).
-        if (currentMonitorEnabled) {
-            leftAmps = left.getCurrent(CurrentUnit.AMPS);
-            rightAmps = right.getCurrent(CurrentUnit.AMPS);
-        }
-
         // Bench detail, off during matches (§4 rule 8). Numbers, not built strings.
         if (TuningConfig.verboseTelemetry) {
             TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
             panels.addData("intake power", commandedPower);
-            if (currentMonitorEnabled) {
-                // Side by side on purpose — one roller working harder than the other is the fault
-                // you are looking for, and a total would hide it.
-                panels.addData("intake L amps", leftAmps);
-                panels.addData("intake R amps", rightAmps);
-            }
         }
     }
 }

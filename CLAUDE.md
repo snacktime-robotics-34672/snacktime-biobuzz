@@ -470,7 +470,7 @@ Persistent control/sensor suite (carries across seasons):
 | Drivetrain LR | `LR_Motor` (port 1) | — | goBILDA Yellow Jacket |
 | Drivetrain RF | `RF_Motor` (port 2) | — | goBILDA Yellow Jacket |
 | Drivetrain RR | `RR_Motor` (port 3) | — | goBILDA Yellow Jacket |
-| Intake L | `L_INTAKE` (**Expansion Hub** port 0) | RS485 | left roller; per-motor amp telemetry like the drive motors |
+| Intake L | `L_INTAKE` (**Expansion Hub** port 0) | RS485 | left roller; no current monitoring — watched by eye at the bench |
 | Intake R | `R_INTAKE` (**Expansion Hub** port 1) | RS485 | right roller; runs opposite the left when `Intake.rightInverted` is set (live flag) |
 
 Both intake motors are one mechanism, owned by one subsystem (`subsystems/Intake`): they start,
