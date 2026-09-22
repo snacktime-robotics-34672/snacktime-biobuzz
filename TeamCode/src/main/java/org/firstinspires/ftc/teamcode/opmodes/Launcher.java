@@ -22,7 +22,8 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *
  * WHAT IT DOES: nothing until you hold X. While X is held the motor runs at {@code launcherPower}
  * (0.9 to start). Release X and the power goes to zero — the wheel then coasts down, because a
- * launcher wheel has real inertia and braking it every shot is hard on the gearbox.
+ * launcher wheel has real inertia and braking it every shot is hard on the gearbox. That is set
+ * once at init, not a knob.
  *
  * WHAT TO WATCH: "Velocity" is the number that matters for a launcher. It tells you how long the
  * wheel takes to spin up, and whether it recovers between shots. It is free to read — encoder
@@ -30,8 +31,9 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * held. Loop time is measured and sent to PANELS instead, so the screen you are watching stays
  * clean without losing the loop-time guard (§4 rule 7).
  *
- * TUNE IT LIVE: {@code launcherPower} is a Panels configurable (§6 Tier 1), so you can try 0.85 or
- * 0.95 while the OpMode is running, with no deploy at all. It is saved per robot on stop.
+ * TUNE IT LIVE: {@code launcherPower} is the one knob, a Panels configurable (§6 Tier 1), so you
+ * can try 0.85 or 0.95 while the OpMode is running, with no deploy at all. It is saved per robot on
+ * stop.
  *
  * WHY THIS IS A PLAIN LinearOpMode, not the command framework: it is a diagnostic, and a diagnostic
  * must still work when something above it is broken — the same reasoning as SystemsCheck. There is
@@ -50,15 +52,6 @@ public class Launcher extends LinearOpMode {
      * full speed.
      */
     public static double launcherPower = 0.9;
-
-    /**
-     * Brake the wheel when you release X, instead of letting it coast down.
-     *
-     * OFF on purpose. A launcher wheel carries real inertia, and braking dumps that energy into the
-     * gearbox every single time. Coasting is kinder to the hardware. Turn it on only if you need
-     * the wheel stopped fast — and expect to hear it.
-     */
-    public static boolean brakeOnRelease = false;
 
     /**
      * The motor to spin. FRONT-LEFT DRIVE MOTOR for now — see the class comment and put the robot
@@ -88,6 +81,11 @@ public class Launcher extends LinearOpMode {
             return;
         }
 
+        // Coast down on release, set once. A launcher wheel carries real inertia, and braking dumps
+        // that energy into the gearbox on every shot. Change this line to BRAKE if the mechanism
+        // ever needs a fast stop.
+        motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
         telemetry.addLine(RobotIdentity.resolve().banner());
         telemetry.addLine("*** PUT THE ROBOT ON BLOCKS — this spins a DRIVE motor ***");
         telemetry.addLine("Hold X to spin the launcher. Release to stop.");
@@ -99,7 +97,6 @@ public class Launcher extends LinearOpMode {
         // sits at one of two values almost all the time, so only write when it actually changes
         // (§0 — the loop budget is dominated by I/O, not math).
         double lastPower = Double.NaN;
-        boolean lastBrake = !brakeOnRelease; // forces the first write to apply the real setting
 
         while (opModeIsActive()) {
             // RULE 1, NON-NEGOTIABLE: clear the bulk cache FIRST, every loop, always (§4).
@@ -109,12 +106,6 @@ public class Launcher extends LinearOpMode {
             boolean held = gamepad1.x;
             double power = held ? Range.clip(launcherPower, -1.0, 1.0) : 0.0;
 
-            if (brakeOnRelease != lastBrake) {
-                motor.setZeroPowerBehavior(brakeOnRelease
-                        ? DcMotor.ZeroPowerBehavior.BRAKE
-                        : DcMotor.ZeroPowerBehavior.FLOAT);
-                lastBrake = brakeOnRelease;
-            }
             if (power != lastPower) {
                 motor.setPower(power);
                 lastPower = power;
