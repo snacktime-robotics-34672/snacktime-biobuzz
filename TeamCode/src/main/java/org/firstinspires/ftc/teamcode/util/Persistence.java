@@ -15,6 +15,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.opmodes.Launcher;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Vision;
@@ -98,6 +99,10 @@ public final class Persistence {
             // The intake's power, trigger threshold, and safety caps. Tuned on the bench by feel,
             // so losing them on stop would throw the session away.
             Intake.class,
+            // The launcher bench test's power. It is the number a bench session exists to find, so
+            // losing it on stop would throw the session away — unlike the Pedro tuners' distances,
+            // which are per-run settings and deliberately not persisted.
+            Launcher.class,
             // The camera transform: lens height, camera pitch, target height. You tune these by
             // watching VisionCalibration against a tape measure, so losing them on stop would throw
             // the whole session away.
