@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -24,7 +26,9 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *
  * WHAT TO WATCH: "Velocity" is the number that matters for a launcher. It tells you how long the
  * wheel takes to spin up, and whether it recovers between shots. It is free to read — encoder
- * velocity rides the bulk read (§4).
+ * velocity rides the bulk read (§4). The Driver Hub shows only that, the power, and whether X is
+ * held. Loop time is measured and sent to PANELS instead, so the screen you are watching stays
+ * clean without losing the loop-time guard (§4 rule 7).
  *
  * TUNE IT LIVE: {@code launcherPower} is a Panels configurable (§6 Tier 1), so you can try 0.85 or
  * 0.95 while the OpMode is running, with no deploy at all. It is saved per robot on stop.
@@ -68,6 +72,8 @@ public class Launcher extends LinearOpMode {
         // MANUAL bulk caching, cleared once at the top of every loop (§4 rule 1).
         BulkReads bulkReads = new BulkReads(hardwareMap);
         LoopTimer loopTimer = new LoopTimer();
+        // Panels buffers lines until update() is called, so this OpMode calls it every loop.
+        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
 
         DcMotorEx motor;
         try {
@@ -114,14 +120,21 @@ public class Launcher extends LinearOpMode {
                 lastPower = power;
             }
 
-            // Loop-time readout is REQUIRED (§0, §4 rule 7). Numbers, not built strings (rule 8).
-            loopTimer.update();
+            // The Driver Hub shows the launcher and NOTHING else. You are watching a wheel spin up
+            // and reading one number off the screen while you do it; anything else is clutter (§8
+            // asks for glanceable, §4 rule 6 for a minimal Driver Hub set).
             telemetry.addData("X held", held ? "SPINNING" : "off");
             telemetry.addData("Power", power);
             telemetry.addData("Velocity", motor.getVelocity()); // ticks/sec, rides the bulk read
-            telemetry.addData("Loop Hz", loopTimer.getHz());
-            telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
             telemetry.update();
+
+            // Loop time is still MEASURED and still REPORTED — §4 rule 7 is NON-NEGOTIABLE — just
+            // not on the Driver Hub. It goes to Panels, which is the dev dashboard this bench test
+            // runs next to anyway, so a loop-time regression is still visible the moment it appears.
+            loopTimer.update();
+            panels.addData("Loop Hz", loopTimer.getHz());
+            panels.addData("Worst ms", loopTimer.getMaxLoopMs());
+            panels.update();
         }
 
         // Never leave the wheel spinning after the OpMode ends (§5).

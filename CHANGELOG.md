@@ -23,7 +23,9 @@ one-command rollback target is easy to find later.
 - **New "Launcher" OpMode for bench testing a launcher wheel.** Hold X and the motor spins at 90%;
   release and it stops and coasts down. The power is a live Panels knob, so you can try other speeds
   while the wheel is running. The Driver Hub shows wheel velocity, which is the number that tells you
-  how fast it spins up and whether it recovers between shots. **It currently spins `LF_Motor`, a DRIVE
+  how fast it spins up and whether it recovers between shots. Loop Hz and worst-loop time are kept
+  off the Driver Hub so the screen stays clean; they still go to Panels, because the loop-time guard
+  is non-negotiable (§4 rule 7). **It currently spins `LF_Motor`, a DRIVE
   motor — the robot must be on blocks.** Point it at the launcher's own port once that is wired.
   **Needs a full install (~40s), not a hot reload** — adding an OpMode changes registration.
   (opmodes/Launcher)
