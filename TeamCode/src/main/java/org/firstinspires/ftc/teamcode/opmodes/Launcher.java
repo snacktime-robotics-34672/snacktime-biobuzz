@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.bylazar.configurables.annotations.Configurable;
-import com.bylazar.telemetry.PanelsTelemetry;
-import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -10,7 +8,6 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.util.BulkReads;
-import org.firstinspires.ftc.teamcode.util.LoopTimer;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
@@ -28,8 +25,14 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * WHAT TO WATCH: "Velocity" is the number that matters for a launcher. It tells you how long the
  * wheel takes to spin up, and whether it recovers between shots. It is free to read — encoder
  * velocity rides the bulk read (§4). The Driver Hub shows only that, the power, and whether X is
- * held. Loop time is measured and sent to PANELS instead, so the screen you are watching stays
- * clean without losing the loop-time guard (§4 rule 7).
+ * held.
+ *
+ * NO LOOP-TIME READOUT — a DELIBERATE exception to §4 rule 7, decided by Aaron on 2026-09-21, and
+ * scoped to this OpMode alone. Every other OpMode still measures and telemeters ms + Hz. The
+ * reasoning: this is a bench rig for one wheel, not a match path. It drives one motor from one
+ * button and never runs in a match, so there is no control loop here whose timing could regress
+ * into a driving fault. If this ever grows into a real Launcher subsystem, the readout comes back
+ * with it.
  *
  * TUNE IT LIVE: {@code launcherPower} is the one knob, a Panels configurable (§6 Tier 1), so you
  * can try 0.85 or 0.95 while the OpMode is running, with no deploy at all. It is saved per robot on
@@ -64,9 +67,6 @@ public class Launcher extends LinearOpMode {
     public void runOpMode() {
         // MANUAL bulk caching, cleared once at the top of every loop (§4 rule 1).
         BulkReads bulkReads = new BulkReads(hardwareMap);
-        LoopTimer loopTimer = new LoopTimer();
-        // Panels buffers lines until update() is called, so this OpMode calls it every loop.
-        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
 
         DcMotorEx motor;
         try {
@@ -119,13 +119,6 @@ public class Launcher extends LinearOpMode {
             telemetry.addData("Velocity", motor.getVelocity()); // ticks/sec, rides the bulk read
             telemetry.update();
 
-            // Loop time is still MEASURED and still REPORTED — §4 rule 7 is NON-NEGOTIABLE — just
-            // not on the Driver Hub. It goes to Panels, which is the dev dashboard this bench test
-            // runs next to anyway, so a loop-time regression is still visible the moment it appears.
-            loopTimer.update();
-            panels.addData("Loop Hz", loopTimer.getHz());
-            panels.addData("Worst ms", loopTimer.getMaxLoopMs());
-            panels.update();
         }
 
         // Never leave the wheel spinning after the OpMode ends (§5).

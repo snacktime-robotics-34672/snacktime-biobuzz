@@ -23,10 +23,14 @@ one-command rollback target is easy to find later.
 - **New "Launcher" OpMode for bench testing a launcher wheel.** Hold X and the motor spins at 90%;
   release and it stops and coasts down. The power is a live Panels knob, so you can try other speeds
   while the wheel is running. The Driver Hub shows wheel velocity, which is the number that tells you
-  how fast it spins up and whether it recovers between shots. Loop Hz and worst-loop time are kept
-  off the Driver Hub so the screen stays clean; they still go to Panels, because the loop-time guard
-  is non-negotiable (§4 rule 7). The wheel always coasts down on release — that is set once at init
-  rather than being a knob, so `launcherPower` is the only thing to turn. **It currently spins `LF_Motor`, a DRIVE
+  how fast it spins up and whether it recovers between shots. The wheel always coasts down on release
+  — set once at init rather than being a knob, so `launcherPower` is the only thing to turn.
+- **The Launcher OpMode has no loop-time readout at all, on purpose.** Aaron's call: it is a bench rig
+  for one wheel driven by one button, never run in a match, so there is no control loop here whose
+  timing could regress into a driving fault. This is a deliberate, single-OpMode exception to the
+  loop-time rule (`CLAUDE.md` §4 rule 7, non-negotiable) and it is written at the top of the file so
+  nobody reads it as an oversight. **Every other OpMode still measures and reports ms + Hz.**
+  (opmodes/Launcher) **It currently spins `LF_Motor`, a DRIVE
   motor — the robot must be on blocks.** Point it at the launcher's own port once that is wired.
   **Needs a full install (~40s), not a hot reload** — adding an OpMode changes registration.
   (opmodes/Launcher)
