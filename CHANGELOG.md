@@ -23,15 +23,39 @@ one-command rollback target is easy to find later.
 - **Moved to FTC SDK 12.0, the 2026-27 season release.** Merged FIRST's `FtcRobotController` 12.0
   into the repo and bumped all eight SDK libraries from 11.1.0. Builds clean and all 142 tests pass;
   nothing has run on a robot yet.
-- **SolversLib had to move too, 0.3.4 → 0.3.5.** 0.3.4's Gradle metadata pins the FTC SDK to
-  *strictly* 11.1.0, so it refuses to resolve against SDK 12. 0.3.5 dropped that pin and still
-  targets Pedro 2.x, so this branch keeps Pedro 2.1.2 and stays independent of the Pedro 3 work.
+- **SolversLib had to move too.** 0.3.4's Gradle metadata pins the FTC SDK to *strictly* 11.1.0, so
+  it refuses to resolve against SDK 12. It went to 0.3.5 while this was its own branch, and to
+  **0.3.6** once the Pedro 3 work merged in — 0.3.6 is the Pedro 3 line and carries no SDK pin, so
+  one version answers both moves.
 - **Your laptop needs Android Studio Narwhal 3 Feature Drop or later.** SDK 12 brings Gradle 9.1 and
   AGP 8.13.2. An older Android Studio will not sync, and will offer to downgrade AGP — say no.
 - **Never install the Robot Controller app from the REV Hardware Client.** It installs FIRST's stock
   app and would delete every OpMode we wrote, plus Sloth. Update from Android Studio instead — our
   build IS the Robot Controller app. (build.gradle, build.dependencies.gradle, FtcRobotController/,
   TeamCode/build.gradle, CLAUDE.md §2)
+
+## 2026-09-22
+- **Moved to Pedro Pathing 3.0.1.** Pedro 3 is a rewrite, not an update: a new path-following
+  algorithm (Foresight), a new way to build paths, and a validated config system. Every file that
+  touched Pedro changed. Confirmed by Aaron before any dependency moved (§6).
+- **Five libraries moved, not two.** Pedro's tuning module needs Sloth 0.3.2, and our Panels and FTC
+  Dashboard forks pinned Sloth 0.2.4, so all of them had to move together. Both dashboards stay on
+  their Sloth forks. **Re-check the Panels canary on the robot** — a broken Panels fork fails
+  silently (§2).
+- **BOTH ROBOTS MUST BE RE-TUNED BEFORE THEY CAN DRIVE PROPERLY.** Foresight brakes using
+  coefficients that nothing in our old tuning corresponds to; only Pedro's AutoTune can measure them.
+  The numbers sitting in `Constants.java` are placeholders, and a robot will follow a path badly
+  until its own AutoTune numbers replace them. Our measured velocities and pod offsets carried over
+  unchanged.
+- **Tuning is a web page now, not an OpMode.** The robot serves Pedro's AutoTune whenever the Robot
+  Controller app is running. `pedroPathing/Tuning.java` says which procedures appear on it.
+- **Three files deleted because Pedro 3 does their job.** Our 1500-line tuner suite, and the
+  `PedroTuningStore` / `TuningRecorder` pair that existed only because Pedro 2's tuning hid inside
+  library objects. Pedro's values are ordinary tunables now, so they save and load like everything
+  else. `StandYourGround` went too — Pedro 3.0.1 ships `driveOrHold`, which waits for the robot to
+  actually stop coasting instead of guessing at a delay like ours did.
+- Net: **324 fewer lines**, and one less bespoke mechanism to explain.
+  (pedroPathing/*, commands/*, opmodes/TeleOpExample, util/*, CLAUDE.md §2 and §6)
 
 ## 2026-09-21
 - **New "Launcher" OpMode for bench testing a launcher wheel.** Hold X and the motor spins at 90%;

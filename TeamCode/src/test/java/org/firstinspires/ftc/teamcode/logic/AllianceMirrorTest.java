@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode.logic;
 
 import static org.junit.Assert.assertEquals;
 
-import com.pedropathing.geometry.Pose;
+import com.pedropathing.math.Pose;
 
 import org.firstinspires.ftc.teamcode.util.AllianceMirror;
 import org.firstinspires.ftc.teamcode.util.AllianceMirror.Symmetry;
@@ -22,9 +22,9 @@ public class AllianceMirrorTest {
     private static final double CENTRE = F / 2.0;                // 72
 
     private static void assertPose(Pose expected, Pose actual) {
-        assertEquals("x", expected.getX(), actual.getX(), EPS);
-        assertEquals("y", expected.getY(), actual.getY(), EPS);
-        assertEquals("heading", expected.getHeading(), actual.getHeading(), EPS);
+        assertEquals("x", expected.x(), actual.x(), EPS);
+        assertEquals("y", expected.y(), actual.y(), EPS);
+        assertEquals("heading", expected.heading(), actual.heading(), EPS);
     }
 
     // ---- The centre is the fixed point --------------------------------------------------------
@@ -32,10 +32,10 @@ public class AllianceMirrorTest {
     @Test
     public void fieldCentreStaysPutUnderEveryMirror() {
         Pose centre = new Pose(CENTRE, CENTRE, 0);
-        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.ROTATIONAL).getX(), EPS);
-        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.ROTATIONAL).getY(), EPS);
-        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.MIRROR_X).getX(), EPS);
-        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.MIRROR_Y).getY(), EPS);
+        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.ROTATIONAL).x(), EPS);
+        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.ROTATIONAL).y(), EPS);
+        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.MIRROR_X).x(), EPS);
+        assertEquals(CENTRE, AllianceMirror.mirror(centre, Symmetry.MIRROR_Y).y(), EPS);
     }
 
     // ---- Each transform ------------------------------------------------------------------------
@@ -77,9 +77,9 @@ public class AllianceMirrorTest {
         for (Symmetry s : Symmetry.values()) {
             Pose there = AllianceMirror.mirror(blue, s);
             Pose back = AllianceMirror.mirror(there, s);
-            assertEquals(s + " x", blue.getX(), back.getX(), EPS);
-            assertEquals(s + " y", blue.getY(), back.getY(), EPS);
-            assertEquals(s + " heading", blue.getHeading(), back.getHeading(), EPS);
+            assertEquals(s + " x", blue.x(), back.x(), EPS);
+            assertEquals(s + " y", blue.y(), back.y(), EPS);
+            assertEquals(s + " heading", blue.heading(), back.heading(), EPS);
         }
     }
 
@@ -103,7 +103,7 @@ public class AllianceMirrorTest {
         // A heading near a full turn must not come out as 2PI or negative — Pedro's own convention
         // is [0, 2PI), and a raw PI + PI would otherwise read as 2PI.
         Pose blue = new Pose(10, 10, Math.PI);
-        double h = AllianceMirror.mirror(blue, Symmetry.ROTATIONAL).getHeading();
+        double h = AllianceMirror.mirror(blue, Symmetry.ROTATIONAL).heading();
         assertEquals(0.0, h, EPS);
     }
 }

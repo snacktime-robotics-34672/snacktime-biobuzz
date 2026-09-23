@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.util.RobotLog;
 /**
  * TuningAutosave — the one place a tuning-file write is asked for, and the thread that does it.
  *
- * WHY IT IS SEPARATE: two watchers ask for saves — {@code TuningRecorder} for Pedro constants and
+ * WHY IT IS SEPARATE: it used to serve two watchers — one for Pedro constants (gone with Pedro 3) and
  * {@link TunableWatcher} for every other tunable. They must share one queue and one writer thread,
  * or a Pedro change and a servo change a moment apart would race each other writing the same file.
  *

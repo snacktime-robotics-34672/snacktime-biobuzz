@@ -136,19 +136,24 @@ dependencies {
 
     // SolversLib: Latest Stable Version
 
-    // 0.3.5, not 0.3.4, and the SDK bump is why: SolversLib 0.3.4's Gradle metadata pins the FTC
-    // SDK to STRICTLY 11.1.0, so it refuses to resolve against SDK 12. 0.3.5 dropped that pin and
-    // still targets Pedro 2.x, which is what this branch runs. (0.3.6 is the Pedro 3 line.)
-    implementation "org.solverslib:core:0.3.5" // core
-    implementation "org.solverslib:pedroPathing:0.3.5" // pedroPathing
-    //    implementation "org.solverslib:photon:0.3.5" // photon is optional (see docs for more info)
+    // 0.3.6 satisfies both moves at once: it is the Pedro 3 line (its pedroPathing module depends
+    // on com.pedropathing:revhub), and it carries no FTC SDK pin, so it resolves against SDK 12.
+    // 0.3.4 was the blocker on both counts — its Gradle metadata pinned the SDK to STRICTLY 11.1.0.
+    implementation "org.solverslib:core:0.3.6" // core
+    implementation "org.solverslib:pedroPathing:0.3.6" // pedroPathing
+    //    implementation "org.solverslib:photon:0.3.6" // photon is optional (see docs for more info)
 
-    implementation "com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1" // FTC Dashboard (Sloth fork — swaps stock dashboard to avoid Sloth hot-reload conflict)
-    implementation "dev.frozenmilk.sinister:Sloth:0.2.4" // Sloth hot-reload runtime
+    implementation "com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0" // FTC Dashboard (Sloth fork — swaps stock dashboard to avoid Sloth hot-reload conflict)
+    implementation "dev.frozenmilk.sinister:Sloth:0.3.2" // Sloth hot-reload runtime
 
-    // Pedro Pathing
-    implementation 'com.pedropathing:ftc:2.1.2'
-    implementation 'com.pedropathing:telemetry:1.0.0'
+    // Pedro Pathing 3. The ARTIFACT NAMES changed in 3.0.0, they are not a version bump:
+    //   com.pedropathing:ftc       -> com.pedropathing:revhub   (the REV hub bindings)
+    //   com.pedropathing:telemetry -> com.pedropathing:tuning    (the tuning/telemetry OpModes)
+    // Pedro 3 publishes to Maven Central, which the root build.gradle already declares.
+    // SolversLib 0.3.6 above is REQUIRED with it: its pedroPathing module depends on
+    // com.pedropathing:revhub:3.0.0, and 0.3.5 and older are built against Pedro 2.x.
+    implementation 'com.pedropathing:revhub:3.0.1'
+    implementation 'com.pedropathing:tuning:1.0.1'
 
     // Panels Dashboard (Sloth fork). Version reads <sloth build>+<panels version>, same scheme as
     // the dashboard line above. MUST stay the Sloth fork: stock Panels finds tunables by scanning
@@ -156,7 +161,7 @@ dependencies {
     // not the copy Sloth is running. Every dashboard edit then lands in a class no OpMode reads,
     // silently. This fork is a Sinister scanner instead — Sloth hands it the classes and loader it
     // actually loaded — so there is only ever one copy. Measured 2026-08-30; see CHANGELOG.
-    implementation "com.bylazar.sloth:fullpanels:0.2.4.1+1.0.12"
+    implementation "com.bylazar.sloth:fullpanels:0.3.2+1.0.13"
 
     // Off-robot unit tests (CLAUDE.md §9) — test-only, does not affect the APK
     testImplementation "junit:junit:4.13.2"

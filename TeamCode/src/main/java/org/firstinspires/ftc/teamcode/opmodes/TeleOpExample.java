@@ -6,8 +6,9 @@ import com.bylazar.field.Style;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.math.Vector;
+import com.pedropathing.drivetrain.DrivePowers;
+import com.pedropathing.follower.ManualDrive;
+import com.pedropathing.math.Pose;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.command.button.Trigger;
@@ -19,7 +20,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import java.util.Locale;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
 import org.firstinspires.ftc.teamcode.commands.IntakeCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
@@ -30,7 +30,6 @@ import org.firstinspires.ftc.teamcode.util.LogCleanup;
 import org.firstinspires.ftc.teamcode.util.LoopTimer;
 import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
-import org.firstinspires.ftc.teamcode.util.StandYourGround;
 
 /**
  * TeleOpExample — field-centric mecanum drive. LEFT_BUMPER = slow mode.
@@ -65,8 +64,6 @@ public class TeleOpExample extends CommandOpMode {
     // the Driver Station, which does.
     private String idBanner;
     private String idBannerHtml;
-    // The defensive brace: holds position whenever the driver lets go of the sticks.
-    private final StandYourGround standYourGround = new StandYourGround();
 
     @Override
     public void initialize() {
@@ -112,10 +109,8 @@ public class TeleOpExample extends CommandOpMode {
         // Pedro drives the wheels; startTeleopDrive() sets it to open-loop mode (§10).
         // The identity picks this robot's own Pedro tuning — comp and test drive differently.
         follower = Constants.createFollower(hardwareMap, robotId);
-        telemetry.addLine(PedroTuningStore.lastStatus());
-        follower.startTeleopDrive();
 
-        // Fail loud rather than let two controllers fight over the same motors. Pedro's point-hold
+        // Fail loud rather than let two controllers fight over the same motors. Pedro's hold
         // governs heading while the brace is active, so heading correction has nothing to add and
         // would pull against it (§5 — say so clearly instead of starting degraded).
         if (Drivetrain.holdWhenIdleEnabled && Drivetrain.headingHoldEnabled) {
@@ -160,13 +155,23 @@ public class TeleOpExample extends CommandOpMode {
         double strafe  = applyDeadzone(-driver.getLeftX(), dz);
         double turn    = applyDeadzone(-driver.getRightX(), dz);
 
+        // FIELD-CENTRIC: rotate the stick inputs by the robot's heading, so "push forward" means
+        // "drive away from the driver" whichever way the robot is pointing. Pedro 2 did this inside
+        // setTeleOpDrive; Pedro 3 makes it an explicit call that hands back the wheel powers.
+        DrivePowers powers = ManualDrive.fieldCentric(
+                forward * cap, strafe * cap, turn * cap, follower.pose().heading());
+
         // STAND YOUR GROUND. Let go of the sticks and the robot braces on the spot instead of
         // coasting, so a push does not move us. Touch a stick and it hands control straight back.
-        // While holding, Pedro is driving the wheels to the held pose, so issuing a manual drive
-        // command would be fighting it — hence the branch rather than an unconditional call.
-        boolean autoControlled = standYourGround.update(follower, forward, strafe, turn);
-        if (!autoControlled) {
-            follower.setTeleOpDrive(forward * cap, strafe * cap, turn * cap, false);
+        //
+        // This was our own util until 2026-09-22; Pedro 3.0.1 ships it as driveOrHold. Its rule is
+        // better than ours was: it waits until the robot is actually SLOW before grabbing the pose,
+        // where we guessed at a fixed delay to ride out the coast.
+        if (Drivetrain.holdWhenIdleEnabled) {
+            ManualDrive.driveOrHold(follower, powers,
+                    Drivetrain.holdInputThreshold, Drivetrain.holdVelocityThreshold);
+        } else {
+            follower.manual(powers);
         }
         follower.update();
 
@@ -183,7 +188,7 @@ public class TeleOpExample extends CommandOpMode {
         //   CRUX — capture ONCE on entry, never re-capture while held: the target is "where the robot
         //   was at the instant the sticks hit zero." If you re-read the pose every loop, a steady push
         //   slowly walks the target and the brace is worthless. So: a small DRIVING <-> HOLDING state
-        //   (§3 allows a local state machine for a genuine mode), capturing follower.getPose() only on
+        //   (§3 allows a local state machine for a genuine mode), capturing follower.pose() only on
         //   the DRIVING->HOLDING transition.
         //
         //   MECHANISM: reuse Pedro's own point-hold rather than hand-rolling a controller — on entry
@@ -221,14 +226,14 @@ public class TeleOpExample extends CommandOpMode {
         // Current mode, which §8 asks for on the Driver Hub — a driver needs to know at a glance
         // whether the robot is braced or free, because the two feel very different on the sticks.
         // Constant strings, so no per-loop allocation (§4 rule 8).
-        telemetry.addData("Drive", driveModeLabel(standYourGround.getState()));
+        telemetry.addData("Drive", driveModeLabel(follower));
         // Intake state is on §8's Driver Hub list. Constant strings, so no per-loop allocation.
         telemetry.addData("Intake", intake.isRunning() ? "ON" : "off");
         telemetry.addData("Loop Hz", loopTimer.getHz());
         telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
-        telemetry.addData("X in", follower.getPose().getX());
-        telemetry.addData("Y in", follower.getPose().getY());
-        telemetry.addData("Heading °", Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addData("X in", follower.pose().x());
+        telemetry.addData("Y in", follower.pose().y());
+        telemetry.addData("Heading °", Math.toDegrees(follower.pose().heading()));
 
         // Drive current, per motor, right now. Four wheels side by side is the view that shows a
         // single motor working harder than its three neighbours — a dragging bearing, a jammed
@@ -258,33 +263,33 @@ public class TeleOpExample extends CommandOpMode {
         // Moves the robot dot on the Panels field view. This is a network send every loop — a
         // deliberate loop-time cost, flagged per §0/§4 — but it's dev-dashboard telemetry, not the
         // Driver Hub set (rule 6), so it's the right place to pay it.
-        drawRobot(follower.getPose());
+        drawRobot(follower.pose());
         panelsField.update();
     }
 
     /** Draws the robot as a circle at pose, with a line showing heading (mirrors pedroPathing/Tuning.java's Drawing). */
     private static void drawRobot(Pose pose) {
         panelsField.setStyle(robotLook);
-        panelsField.moveCursor(pose.getX(), pose.getY());
+        panelsField.moveCursor(pose.x(), pose.y());
         panelsField.circle(ROBOT_RADIUS);
 
-        Vector v = pose.getHeadingAsUnitVector();
-        v.setMagnitude(v.getMagnitude() * ROBOT_RADIUS);
+        // Heading line. Pedro 3 dropped getHeadingAsUnitVector(), so the unit vector is built here
+        // from the heading itself — the same two numbers, one less API to depend on.
+        double dx = Math.cos(pose.heading()) * ROBOT_RADIUS;
+        double dy = Math.sin(pose.heading()) * ROBOT_RADIUS;
         panelsField.setStyle(robotLook);
-        panelsField.moveCursor(pose.getX() + v.getXComponent() / 2, pose.getY() + v.getYComponent() / 2);
-        panelsField.line(pose.getX() + v.getXComponent(), pose.getY() + v.getYComponent());
+        panelsField.moveCursor(pose.x() + dx / 2, pose.y() + dy / 2);
+        panelsField.line(pose.x() + dx, pose.y() + dy);
     }
 
     /**
      * Driver-facing name for the drive mode. Constant strings, so no per-loop allocation (§4 rule 8).
      * A driver needs this at a glance: the three modes feel completely different on the sticks.
      */
-    private static String driveModeLabel(StandYourGround.State state) {
-        switch (state) {
-            case HOLDING: return "HOLDING (braced)";
-            case YIELDED: return "AUTO (driving to a spot)";
-            default:      return "manual";
-        }
+    private static String driveModeLabel(Follower follower) {
+        if (follower.holding()) return "HOLDING (braced)";
+        if (follower.following()) return "AUTO (driving to a spot)";
+        return "manual";
     }
 
     /**
@@ -309,8 +314,7 @@ public class TeleOpExample extends CommandOpMode {
 
     @Override
     public void reset() {
-        standYourGround.reset(); // drop any hold before the follower stops driving
-        follower.breakFollowing();
+        follower.stop(); // drop any hold before the OpMode ends
         drivetrain.stop();
         intake.stop(); // never leave the intake spinning after the OpMode ends
         Persistence.saveTuning(robotId);
