@@ -305,7 +305,7 @@ hub network name — see §10). Two tuning categories, handled differently *on p
   reviewable.
 - **What stays shared** is only the wiring — motor names and directions, identical on both robots
   (§10) — built in one helper so the two robots cannot drift apart.
-- An **UNKNOWN** hub gets its own untuned values, always capped at `Constants.untunedMaxPower`, and
+- An **UNKNOWN** hub gets its own untuned values, always capped at `Constants.fallbackMaxPower`, and
   logs a warning. It must still build a follower to run at all, so it cannot "load nothing" the way
   tuning JSON does; capping power is how it fails closed. Never given comp's tuning.
 - **CHANGED 2026-09-22 with Pedro 3 — the bespoke Pedro tuning store is GONE.** Pedro 2 kept its
@@ -321,17 +321,17 @@ hub network name — see §10). Two tuning categories, handled differently *on p
     on the next loop.
   - **Everything else needs a re-init**: velocities, decelerations, brake coefficients, pod offsets
     and max power are read once when the follower is built. The class comment says which is which.
-  - **An untuned robot drives at half power.** Foresight needs brake coefficients that only AutoTune
-    can measure. Until a robot's `...PedroTuned` flag is true it is capped, and says so on the Driver
-    Hub — the same fail-closed reasoning as an UNKNOWN hub.
+  - **Neither robot is tuned for Pedro 3 yet.** Foresight brakes using coefficients that only
+    AutoTune can measure, and the ones in `Constants.java` are placeholders — a robot will follow a
+    path badly until its own AutoTune numbers are in there. An **UNKNOWN** hub is still capped at
+    `Constants.fallbackMaxPower`; the two known robots are not.
   - After the follower is built, the values are read back out and logged. A value that persists but
     never reaches the follower looks perfectly tuned everywhere else; this is the only check that
     catches that.
 - **Tuning is now AutoTune**, a web page the robot serves whenever the RC app is running — there is
   no tuning OpMode any more. `pedroPathing/Tuning.java` lists which procedures appear on it;
   `pedroPathing/procedures/` holds them, copied unchanged from the Pedro Quickstart. Each one prints
-  a paste-ready block: put its numbers in `Constants.java` for the robot you tuned, set that robot's
-  `...PedroTuned` flag true, and commit.
+  a paste-ready block: put its numbers in `Constants.java` for the robot you tuned, and commit.
 
 ---
 

@@ -109,10 +109,6 @@ public class TeleOpExample extends CommandOpMode {
         // Pedro drives the wheels; startTeleopDrive() sets it to open-loop mode (§10).
         // The identity picks this robot's own Pedro tuning — comp and test drive differently.
         follower = Constants.createFollower(hardwareMap, robotId);
-        if (!Constants.isTuned(robotId)) {
-            telemetry.addLine("*** PEDRO NOT TUNED on this robot — capped at "
-                    + Constants.untunedMaxPower + " power. Run AutoTune. ***");
-        }
 
         // Fail loud rather than let two controllers fight over the same motors. Pedro's hold
         // governs heading while the brace is active, so heading correction has nothing to add and

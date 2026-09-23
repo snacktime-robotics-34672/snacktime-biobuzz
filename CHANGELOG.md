@@ -29,8 +29,9 @@ one-command rollback target is easy to find later.
   silently (§2).
 - **BOTH ROBOTS MUST BE RE-TUNED BEFORE THEY CAN DRIVE PROPERLY.** Foresight brakes using
   coefficients that nothing in our old tuning corresponds to; only Pedro's AutoTune can measure them.
-  Until a robot is tuned it runs at **half power** and says so on the Driver Hub, the same way an
-  unidentified hub does. Our measured velocities and pod offsets carried over unchanged.
+  The numbers sitting in `Constants.java` are placeholders, and a robot will follow a path badly
+  until its own AutoTune numbers replace them. Our measured velocities and pod offsets carried over
+  unchanged.
 - **Tuning is a web page now, not an OpMode.** The robot serves Pedro's AutoTune whenever the Robot
   Controller app is running. `pedroPathing/Tuning.java` says which procedures appear on it.
 - **Three files deleted because Pedro 3 does their job.** Our 1500-line tuner suite, and the

@@ -54,10 +54,9 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * for the robot you tuned, or turn them in Panels and commit that robot's tuning file.
  * ---------------------------------------------------------------------------------------------
  *
- * UNTUNED ROBOTS DRIVE AT HALF POWER. Foresight needs brake coefficients that only AutoTune can
- * measure, and we do not have them yet for either robot. Until a robot's {@code ...PedroTuned} flag
- * below is set true, {@link #createFollower} caps it at {@link #untunedMaxPower} and says so loudly.
- * That is the same fail-closed reasoning the UNKNOWN hub already used (§5, §6).
+ * NEITHER ROBOT IS TUNED FOR PEDRO 3 YET. Foresight brakes using coefficients that only AutoTune
+ * can measure, and the ones below are placeholders. A robot will follow a path badly until its
+ * AutoTune numbers are in this file. The values say so, in comments, on the fields themselves.
  */
 @Configurable
 public class Constants {
@@ -66,15 +65,16 @@ public class Constants {
     // SHARED — the wiring is identical on both robots (CLAUDE.md §10)
     // ===================================================================================
 
-    /** Power ceiling for a robot whose Pedro tuning has not been measured yet. */
-    public static double untunedMaxPower = 0.5;
+    /**
+     * Power ceiling for an UNKNOWN hub, 0..1. A hub whose network name is neither robot's must
+     * still drive — the OpMode cannot run without a follower — but it must never drive hard on
+     * tuning that may not be its own (CLAUDE.md §6, fail closed).
+     */
+    public static double fallbackMaxPower = 0.5;
 
     // ===================================================================================
     // COMPETITION ROBOT
     // ===================================================================================
-
-    /** Set true only after AutoTune has been run ON the comp robot and its numbers are below. */
-    public static boolean compPedroTuned = false;
 
     /** Max forward velocity, in/s. Measured 2026-07-18 under Pedro 2; carries over unchanged. */
     public static double compForwardVelocity = 81.34056;
@@ -87,7 +87,8 @@ public class Constants {
     public static double compForwardPodY = 6.735;
     public static double compStrafePodX = 0.287;
 
-    // Foresight — ALL UNTUNED PLACEHOLDERS. AutoTune replaces every number in this block.
+    // Foresight — ALL UNTUNED PLACEHOLDERS. The comp robot will follow a path badly until
+    // AutoTune has been run on it and every number in this block replaced.
     public static double compTranslationalForwardPrimary = 0.1;
     public static double compTranslationalForwardSecondary = 0.02;
     public static double compTranslationalStrafePrimary = 0.1;
@@ -108,9 +109,6 @@ public class Constants {
     // TEST BOT
     // ===================================================================================
 
-    /** Set true only after AutoTune has been run ON the test bot and its numbers are below. */
-    public static boolean testPedroTuned = false;
-
     /** Max forward velocity, in/s. Measured under Pedro 2; carries over unchanged. */
     public static double testForwardVelocity = 78.27354;
     /** Max lateral velocity, in/s. Measured under Pedro 2; carries over unchanged. */
@@ -126,7 +124,8 @@ public class Constants {
     public static double testForwardPodY = 4.3823;
     public static double testStrafePodX = 2.1985;
 
-    // Foresight — ALL UNTUNED PLACEHOLDERS, same as comp.
+    // Foresight — ALL UNTUNED PLACEHOLDERS. The test bot will follow a path badly until
+    // AutoTune has been run on it and every number in this block replaced.
     public static double testTranslationalForwardPrimary = 0.1;
     public static double testTranslationalForwardSecondary = 0.02;
     public static double testTranslationalStrafePrimary = 0.1;
@@ -178,21 +177,16 @@ public class Constants {
         if (!id.isKnown()) {
             RobotLog.ww("PedroConstants", "UNKNOWN robot (name=\"%s\") — untuned fallback Pedro "
                             + "config at %.2f max power. Path following will be inaccurate.",
-                    id.networkName, untunedMaxPower);
-        } else if (!isTuned(id)) {
-            RobotLog.ww("PedroConstants", "%s has NOT been tuned for Pedro 3 — running at %.2f max "
-                            + "power on placeholder brake coefficients. Run AutoTune, then set "
-                            + "%sPedroTuned = true.",
-                    id.robot, untunedMaxPower, id.robot == RobotIdentity.Robot.COMPETITION ? "comp" : "test");
+                    id.networkName, fallbackMaxPower);
         }
 
         // Read the values back OUT of what we just built, not out of the statics we wrote. A value
         // that persists but never reaches the follower looks perfectly tuned everywhere else; this
         // log is the only thing that would catch it (CLAUDE.md §6).
         RobotLog.ii("PedroConstants", "follower built for %s: maxPower=%.2f fwdVel=%.3f "
-                        + "strafeVel=%.3f forwardPodY=%.4f strafePodX=%.4f tuned=%s",
+                        + "strafeVel=%.3f forwardPodY=%.4f strafePodX=%.4f",
                 id.robot, maxPowerFor(id), forwardVelocityFor(id), strafeVelocityFor(id),
-                forwardPodYFor(id), strafePodXFor(id), isTuned(id));
+                forwardPodYFor(id), strafePodXFor(id));
 
         return new Follower(localizer, drivetrain, algorithm);
     }
@@ -214,19 +208,13 @@ public class Constants {
     // Per-robot value selection
     // ===================================================================================
 
-    /** True once AutoTune has been run on this robot and its numbers are in this file. */
-    public static boolean isTuned(RobotIdentity id) {
-        switch (id.robot) {
-            case COMPETITION: return compPedroTuned;
-            case TESTBOT:     return testPedroTuned;
-            default:          return false; // an UNKNOWN hub is never "tuned"
-        }
-    }
-
-    /** Power ceiling for this robot. An untuned or unidentified robot is always capped. */
+    /** Power ceiling for this robot. An UNKNOWN hub is capped; the two known robots are not. */
     public static double maxPowerFor(RobotIdentity id) {
-        if (!isTuned(id)) return untunedMaxPower;
-        return id.robot == RobotIdentity.Robot.COMPETITION ? compMaxPower : testMaxPower;
+        switch (id.robot) {
+            case COMPETITION: return compMaxPower;
+            case TESTBOT:     return testMaxPower;
+            default:          return fallbackMaxPower;
+        }
     }
 
     public static double forwardVelocityFor(RobotIdentity id) {

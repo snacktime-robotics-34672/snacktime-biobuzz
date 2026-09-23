@@ -99,7 +99,8 @@ our committed tuning corresponds to them. They come from Pedro 3's AutoTune proc
 robot. So:
 
 > **Both robots must be re-tuned on the bench before Pedro 3 can drive.** This is not a code-only
-> migration. Comp and test each need an AutoTune session.
+> migration. Comp and test each need an AutoTune session. The brake coefficients in `Constants.java`
+> are placeholders until then, and path following will be poor.
 
 ---
 
