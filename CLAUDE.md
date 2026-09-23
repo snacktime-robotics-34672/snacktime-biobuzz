@@ -73,7 +73,13 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
 
 ## 2. The stack
 
-- **Base:** FTC SDK **11.1.0** on the REV Control Hub (`compileSdk 34`, `minSdkVersion 24`, Java 8).
+- **Base:** FTC SDK **12.0.0** — the 2026-27 BIOBUZZ season release — on the REV Control Hub
+  (`compileSdk 34`, `minSdkVersion 24`, Java 8). Building it needs **Android Studio Narwhal 3
+  Feature Drop or later**, because SDK 12 moves to Gradle 9.1 and AGP 8.13.2; an older Android
+  Studio will fail to sync and will offer to downgrade AGP — **do not accept that**.
+  **Update the app from Android Studio, never from the REV Hardware Client's "install Robot
+  Controller app" button.** That button installs FIRST's stock app, which would wipe every OpMode we
+  wrote and the Sloth runtime with them. It is meant for Blocks and OnBot Java teams, not us.
 - **Language / Framework:** **Java** with **SolversLib 0.3.4** (the maintained FTCLib fork) — command +
   subsystem model. Hosted on the Dairy Foundation, the same home as Sloth. AI-readable docs at
   `docs.seattlesolvers.com/llms.txt` (any page + `.md` returns markdown) — use them rather than

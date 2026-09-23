@@ -1,3 +1,5 @@
+apply plugin: 'com.android.application'
+
 //
 // build.gradle in TeamCode
 //
@@ -7,7 +9,6 @@
 // the build definitions, you can place those customizations in this file, but
 // please think carefully as to whether such customizations are really necessary
 // before doing so.
-
 
 // Custom definitions may go here
 
@@ -135,9 +136,12 @@ dependencies {
 
     // SolversLib: Latest Stable Version
 
-    implementation "org.solverslib:core:0.3.4" // core
-    implementation "org.solverslib:pedroPathing:0.3.4" // pedroPathing
-    //    implementation "org.solverslib:photon:0.3.4" // photon is optional (see docs for more info)
+    // 0.3.5, not 0.3.4, and the SDK bump is why: SolversLib 0.3.4's Gradle metadata pins the FTC
+    // SDK to STRICTLY 11.1.0, so it refuses to resolve against SDK 12. 0.3.5 dropped that pin and
+    // still targets Pedro 2.x, which is what this branch runs. (0.3.6 is the Pedro 3 line.)
+    implementation "org.solverslib:core:0.3.5" // core
+    implementation "org.solverslib:pedroPathing:0.3.5" // pedroPathing
+    //    implementation "org.solverslib:photon:0.3.5" // photon is optional (see docs for more info)
 
     implementation "com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1" // FTC Dashboard (Sloth fork — swaps stock dashboard to avoid Sloth hot-reload conflict)
     implementation "dev.frozenmilk.sinister:Sloth:0.2.4" // Sloth hot-reload runtime
