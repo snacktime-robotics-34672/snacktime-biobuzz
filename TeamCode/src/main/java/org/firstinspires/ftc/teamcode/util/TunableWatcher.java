@@ -43,7 +43,7 @@ public final class TunableWatcher {
     private static boolean dirty = false;
     private static long lastChangeNanos = 0L;
 
-    /** Values must hold still this long before we save — see TuningRecorder for why. */
+    /** Values must hold still this long before we save, so a knob mid-turn is not written. */
     private static final long SETTLE_NANOS = 1_000_000_000L;
 
     private static final byte DOUBLE = 0, FLOAT = 1, INT = 2, LONG = 3, BOOLEAN = 4;

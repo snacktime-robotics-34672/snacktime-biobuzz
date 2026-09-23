@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.util;
 
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.math.MathFunctions;
+import com.pedropathing.math.Pose;
+import com.pedropathing.utils.Angle;
 
 /**
  * AllianceMirror — write every auto once, for BLUE, and let the code produce the RED version.
@@ -54,21 +54,21 @@ public final class AllianceMirror {
             case MIRROR_X:
                 // Reflect across the vertical centre line: x flips, y stays, heading reflects about
                 // the y-axis. Facing +x becomes facing -x; facing +y is unchanged.
-                return new Pose(FIELD_INCHES - pose.getX(), pose.getY(),
-                        MathFunctions.normalizeAngle(Math.PI - pose.getHeading()));
+                return new Pose(FIELD_INCHES - pose.x(), pose.y(),
+                        Angle.normalize(Math.PI - pose.heading()));
 
             case MIRROR_Y:
                 // Reflect across the horizontal centre line: y flips, x stays, heading reflects
                 // about the x-axis. Facing +y becomes facing -y; facing +x is unchanged.
-                return new Pose(pose.getX(), FIELD_INCHES - pose.getY(),
-                        MathFunctions.normalizeAngle(-pose.getHeading()));
+                return new Pose(pose.x(), FIELD_INCHES - pose.y(),
+                        Angle.normalize(-pose.heading()));
 
             case ROTATIONAL:
             default:
                 // Rotate 180° about the field centre: both axes flip and the robot faces the
                 // opposite way.
-                return new Pose(FIELD_INCHES - pose.getX(), FIELD_INCHES - pose.getY(),
-                        MathFunctions.normalizeAngle(pose.getHeading() + Math.PI));
+                return new Pose(FIELD_INCHES - pose.x(), FIELD_INCHES - pose.y(),
+                        Angle.normalize(pose.heading() + Math.PI));
         }
     }
 

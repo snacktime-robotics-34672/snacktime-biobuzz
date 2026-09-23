@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.math.MathFunctions;
+import com.pedropathing.math.Pose;
+import com.pedropathing.utils.Angle;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -118,9 +118,9 @@ public class AutonMenu {
         AutonFieldTweaks tweaks = getFieldTweaks();
 
         return new Pose(
-                mirrored.getX() + tweaks.xOffsetInches,
-                mirrored.getY() + tweaks.yOffsetInches,
-                MathFunctions.normalizeAngle(
-                        mirrored.getHeading() + Math.toRadians(tweaks.headingOffsetDeg)));
+                mirrored.x() + tweaks.xOffsetInches,
+                mirrored.y() + tweaks.yOffsetInches,
+                Angle.normalize(
+                        mirrored.heading() + Math.toRadians(tweaks.headingOffsetDeg)));
     }
 }

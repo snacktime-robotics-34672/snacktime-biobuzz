@@ -19,6 +19,28 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-22
+- **Moved to Pedro Pathing 3.0.1.** Pedro 3 is a rewrite, not an update: a new path-following
+  algorithm (Foresight), a new way to build paths, and a validated config system. Every file that
+  touched Pedro changed. Confirmed by Aaron before any dependency moved (§6).
+- **Five libraries moved, not two.** Pedro's tuning module needs Sloth 0.3.2, and our Panels and FTC
+  Dashboard forks pinned Sloth 0.2.4, so all of them had to move together. Both dashboards stay on
+  their Sloth forks. **Re-check the Panels canary on the robot** — a broken Panels fork fails
+  silently (§2).
+- **BOTH ROBOTS MUST BE RE-TUNED BEFORE THEY CAN DRIVE PROPERLY.** Foresight brakes using
+  coefficients that nothing in our old tuning corresponds to; only Pedro's AutoTune can measure them.
+  Until a robot is tuned it runs at **half power** and says so on the Driver Hub, the same way an
+  unidentified hub does. Our measured velocities and pod offsets carried over unchanged.
+- **Tuning is a web page now, not an OpMode.** The robot serves Pedro's AutoTune whenever the Robot
+  Controller app is running. `pedroPathing/Tuning.java` says which procedures appear on it.
+- **Three files deleted because Pedro 3 does their job.** Our 1500-line tuner suite, and the
+  `PedroTuningStore` / `TuningRecorder` pair that existed only because Pedro 2's tuning hid inside
+  library objects. Pedro's values are ordinary tunables now, so they save and load like everything
+  else. `StandYourGround` went too — Pedro 3.0.1 ships `driveOrHold`, which waits for the robot to
+  actually stop coasting instead of guessing at a delay like ours did.
+- Net: **324 fewer lines**, and one less bespoke mechanism to explain.
+  (pedroPathing/*, commands/*, opmodes/TeleOpExample, util/*, CLAUDE.md §2 and §6)
+
 ## 2026-09-21
 - **New "Launcher" OpMode for bench testing a launcher wheel.** Hold X and the motor spins at 90%;
   release and it stops and coasts down. The power is a live Panels knob, so you can try other speeds

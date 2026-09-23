@@ -22,8 +22,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Vision;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
 import org.firstinspires.ftc.teamcode.hardware.BuildInfo;
-import org.firstinspires.ftc.teamcode.pedroPathing.PedroTuningStore;
-import org.firstinspires.ftc.teamcode.pedroPathing.TuningRecorder;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
@@ -99,6 +98,9 @@ public final class Persistence {
             // The intake's power, trigger threshold, and safety caps. Tuned on the bench by feel,
             // so losing them on stop would throw the session away.
             Intake.class,
+            // Pedro's own tuning. Since Pedro 3 these are plain statics, so they persist like any
+            // other tunable — no bespoke flattening any more (see Constants).
+            Constants.class,
             // The launcher bench test's power. It is the number a bench session exists to find, so
             // losing it on stop would throw the session away — unlike the Pedro tuners' distances,
             // which are per-run settings and deliberately not persisted.
@@ -242,7 +244,6 @@ public final class Persistence {
     /** AUTO-EXPORT without hardware capture. Prefer the two-arg overload when hardwareMap is available. */
     public static void writeSnapshot(Snapshot snapshot) {
         captureTuningInto(snapshot.tuning);
-        PedroTuningStore.captureInto(snapshot.tuning, identityFromName(snapshot.robot));
         try {
             // Per-robot filename so pulling snapshots from both robots into one folder never clobbers,
             // and each file is self-describing (see snapshotFileFor).
@@ -290,29 +291,26 @@ public final class Persistence {
     /**
      * Polls BOTH change-watchers. Call once per loop from EVERY OpMode.
      *
-     * WHY ONE CALL: there are two watchers, because there are two kinds of tunable. TunableWatcher
-     * reflects over the @Configurable statics in TUNING_CLASSES; TuningRecorder reads Pedro's
-     * constants, which live in nested library types reflection cannot walk. Wiring them separately
-     * is how the Pedro half ended up running in the Tuning suite and nowhere else — turn a pod
-     * offset in TeleOp and nothing queued a save, so the value lived only until the next re-init
-     * read the file back over it. One call, so an OpMode cannot get half of it.
+     * ONE WATCHER SINCE PEDRO 3 (2026-09-22). There used to be two, because Pedro 2's constants sat
+     * in nested library types that reflection could not walk, so TuningRecorder read them by hand.
+     * Pedro 3's config is built from plain statics on {@link Constants}, which TUNING_CLASSES covers
+     * like any other tunable — so the second watcher, and the bespoke flattening behind it, are gone.
      *
-     * COST: for Pedro, 21 direct double compares. For the rest, one typed reflective read and one
-     * compare per watched field. No allocation either way (§4.8). A file write happens only about a
-     * second after you stop turning something, and a daemon thread does it — never the loop thread.
+     * COST: one typed reflective read and one compare per watched field, no allocation (§4.8). A
+     * file write happens only about a second after you stop turning something, and a daemon thread
+     * does it — never the loop thread.
      *
      * @param id  the robot resolved at init
      * @param now {@code System.nanoTime()}
      */
     public static void pollAutosave(RobotIdentity id, long now) {
         if (!TuningConfig.autosaveTunables) return;
-        TuningRecorder.poll(id, now);
         TunableWatcher.poll(id, now);
     }
 
     public static synchronized void saveTuning(RobotIdentity id) {
-        // SYNCHRONIZED because there are now two writers: an OpMode's stop() on the loop thread, and
-        // the Pedro autosave daemon (TuningRecorder). Two threads writing the same file can
+        // SYNCHRONIZED because there are two writers: an OpMode's stop() on the loop thread, and the
+        // autosave daemon behind TunableWatcher. Two threads writing the same file can
         // interleave into truncated JSON, which the next load would reject wholesale — losing the
         // tuning this feature exists to protect. The lock costs nothing: writes are rare and never
         // on the hot path.
@@ -325,11 +323,9 @@ public final class Persistence {
             File file = AppUtil.getInstance().getSettingsFile(fileName);
             file.getParentFile().mkdirs();
             Map<String, Object> values = new LinkedHashMap<>();
+            // One per-robot file holds ALL of this robot's tuning, Pedro's included: since Pedro 3
+            // those are ordinary statics on Constants, which is in TUNING_CLASSES.
             captureTuningInto(values);
-            // Pedro's constants are not reflected over like the @Configurable classes above — they
-            // live in nested Pedro types, so PedroTuningStore flattens them into plain doubles.
-            // Same file: one per-robot file holds ALL of this robot's tuning.
-            PedroTuningStore.captureInto(values, id);
             ReadWriteFile.writeFile(file, GSON.toJson(values));
             RobotLog.i("Persistence: %s tuning saved → %s", id.robot, file.getAbsolutePath());
         } catch (Throwable t) {
@@ -471,19 +467,6 @@ public final class Persistence {
             return (values == null || values.isEmpty()) ? null : values;
         } catch (Throwable t) {
             RobotLog.e("Persistence: tuning read FAILED: %s", t.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Rebuilds a RobotIdentity from the robot name recorded on a Snapshot, so the snapshot can
-     * carry Pedro values for the right robot. Returns null for an unrecognised name, which
-     * PedroTuningStore treats as "record nothing" — fail closed, same as everywhere else.
-     */
-    private static RobotIdentity identityFromName(String robotName) {
-        try {
-            return RobotIdentity.of(RobotIdentity.Robot.valueOf(robotName), "(from snapshot)");
-        } catch (Exception e) {
             return null;
         }
     }

@@ -42,15 +42,13 @@ public class TuningClassRegistrationTest {
      * ground for anything that makes the test red.
      */
     private static final Set<String> INTENTIONALLY_NOT_PERSISTED = new HashSet<>(Arrays.asList(
-            // Pedro constants live in nested Pedro types that reflection cannot restore. They are
-            // persisted by PedroTuningStore's explicit table instead — see its class doc.
-            "Constants",
-            // The tuner OpMode. It is @Configurable so Panels groups the suite; its own statics are
-            // the follower and telemetry, all marked @IgnoreConfigurable.
-            "Tuning",
             // A one-field diagnostic canary for the Panels/Sloth class-identity bug. You type into
             // it to prove live tuning works; persisting it would be meaningless.
             "PanelsProbe"
+            // REMOVED 2026-09-22 with the move to Pedro 3:
+            //   "Constants" — its values are plain statics now, so it persists like anything else
+            //                 and IS registered in TUNING_CLASSES.
+            //   "Tuning"    — deleted. Pedro 3 ships its tuner suite in com.pedropathing:tuning.
     ));
 
     /**
@@ -64,12 +62,11 @@ public class TuningClassRegistrationTest {
      * one-off exceptions, each argued individually; this one is a single category with one reason,
      * so the suite growing a new tuner does not read as the excuse list growing a new excuse.
      */
-    private static final Set<String> BENCH_TUNERS = new HashSet<>(Arrays.asList(
-            "ForwardTuner", "LateralTuner", "TurnTuner",
-            "ForwardVelocityTuner", "LateralVelocityTuner",
-            "ForwardZeroPowerAccelerationTuner", "LateralZeroPowerAccelerationTuner",
-            "TranslationalTuner", "HeadingTuner", "DriveTuner",
-            "Line", "CentripetalTuner", "Circle"
+    private static final Set<String> BENCH_TUNERS = new HashSet<>(Arrays.<String>asList(
+            // EMPTIED 2026-09-22. These were the sixteen tuner classes inside our own Tuning.java,
+            // which Pedro 3 replaced with its packaged tuning module and AutoTune. Nothing in
+            // teamcode declares them any more. Kept as an empty list, not deleted, because the
+            // reasoning above still applies the day we add a bench tuner of our own.
     ));
 
     /** Every class allowed to be @Configurable without being persisted. */

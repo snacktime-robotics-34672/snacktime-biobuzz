@@ -1,9 +1,9 @@
 package org.firstinspires.ftc.teamcode.commands;
 
+import com.pedropathing.api.Paths;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.PathChain;
+import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.seattlesolvers.solverslib.command.CommandBase;
@@ -74,7 +74,13 @@ public class DriveToPoseCommand extends CommandBase {
         this.target = target;
     }
 
-    /** @param maxPower 0..1 cap on drive power for this move. Lower it for a delicate approach. */
+    /**
+     * @param maxPower 0..1 cap on drive power for this move.
+     * @deprecated NO LONGER APPLIED. Pedro 3 keeps the speed ceiling on the follower's Foresight
+     *             config ({@code maxPathSpeed}) and offers no per-move override. Kept so existing
+     *             call sites compile; set the cap in {@code Constants}.
+     */
+    @Deprecated
     public DriveToPoseCommand setMaxPower(double maxPower) {
         this.maxPower = maxPower;
         return this;
@@ -96,8 +102,8 @@ public class DriveToPoseCommand extends CommandBase {
 
     /** Straight-line distance between two poses, in inches. Heading is ignored. */
     public static double distanceInches(Pose from, Pose to) {
-        double dx = to.getX() - from.getX();
-        double dy = to.getY() - from.getY();
+        double dx = to.x() - from.x();
+        double dy = to.y() - from.y();
         return Math.hypot(dx, dy);
     }
 
@@ -114,26 +120,23 @@ public class DriveToPoseCommand extends CommandBase {
         timedOut = false;
         resolvedTarget = target.get();
 
-        Pose start = follower.getPose();
+        Pose start = follower.pose();
         alreadyThere = isAlreadyThere(start, resolvedTarget, MIN_PATH_INCHES);
 
         if (alreadyThere) {
             // No path to build. Still square up on the target heading if we were asked to hold,
             // because "already in position" should not mean "pointing the wrong way".
             if (holdEnd) {
-                follower.holdPoint(resolvedTarget);
+                follower.hold(resolvedTarget);
             }
             return;
         }
 
-        follower.setMaxPower(maxPower);
+        // Pedro 3 builds the path and its heading plan in one expression: a straight line between
+        // the two poses, with the heading interpolated linearly from start to target.
+        Path path = Paths.line(start, resolvedTarget).linear(start, resolvedTarget);
 
-        PathChain path = follower.pathBuilder()
-                .addPath(new BezierLine(start, resolvedTarget))
-                .setLinearHeadingInterpolation(start.getHeading(), resolvedTarget.getHeading())
-                .build();
-
-        follower.followPath(path, holdEnd);
+        follower.follow(path);
     }
 
     @Override
@@ -144,9 +147,9 @@ public class DriveToPoseCommand extends CommandBase {
             timedOut = true;
             RobotLog.ww("DriveToPose", "TIMEOUT after %.1fs — wanted (%.1f, %.1f) but stopped at "
                             + "(%.1f, %.1f), %.1f in short. Robot stopped.",
-                    timer.seconds(), resolvedTarget.getX(), resolvedTarget.getY(),
-                    follower.getPose().getX(), follower.getPose().getY(),
-                    distanceInches(follower.getPose(), resolvedTarget));
+                    timer.seconds(), resolvedTarget.x(), resolvedTarget.y(),
+                    follower.pose().x(), follower.pose().y(),
+                    distanceInches(follower.pose(), resolvedTarget));
             return true;
         }
 
@@ -155,10 +158,14 @@ public class DriveToPoseCommand extends CommandBase {
 
     @Override
     public void end(boolean interrupted) {
-        // Give up driving toward a pose we are no longer chasing. On a clean arrival with holdEnd
-        // set, Pedro is already holding the spot and must be left alone to keep doing it.
+        // Give up driving toward a pose we are no longer chasing.
         if (interrupted || timedOut) {
-            follower.breakFollowing();
+            follower.stop();
+            return;
+        }
+        // Clean arrival. Pedro 3's follow() takes no holdEnd argument, so the hold is issued here.
+        if (holdEnd && !alreadyThere) {
+            follower.hold(resolvedTarget);
         }
     }
 

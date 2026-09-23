@@ -1,7 +1,8 @@
 # Pedro 2.1.2 → 3.0.1 migration map
 
-Branch: `pedro-3`. Status: **dependencies bumped and resolving; code not yet migrated (88 compile
-errors).** This file is the map for finishing it, so the work can be picked up by anyone.
+Branch: `pedro-3`. Status: **CODE MIGRATED — builds clean, 111 unit tests pass, APK assembles.
+NOTHING HAS RUN ON A ROBOT YET.** The Phase-0 checklist at the end is the part that is still open,
+and it cannot be done at a laptop. This file records what changed and why.
 
 Written 2026-09-22 against `com.pedropathing:core:3.0.1`, `revhub:3.0.1`, `tuning:1.0.1` and
 SolversLib `0.3.6`, read from the published sources jars — not from guesswork.
@@ -103,6 +104,8 @@ robot. So:
 ---
 
 ## 4. Files to change, and what happens to each
+
+All of the below is DONE on this branch. Kept as the record of what moved where.
 
 | File | Lines | What happens |
 |---|---|---|

@@ -28,21 +28,23 @@ public class Drivetrain extends SubsystemBase {
 
     // ---- Stand your ground: hold position when the sticks are released ----------------------
     // The robot captures where it is and fights to stay there until the driver touches a stick.
-    // See util/StandYourGround.java. Do NOT enable this together with headingHoldEnabled
+    // Pedro 3's ManualDrive.driveOrHold does this, called from TeleOp. Do NOT enable it together
+    // with headingHoldEnabled
     // below — Pedro's point-hold already governs heading, so the two fight over the same motors.
 
     public static boolean holdWhenIdleEnabled = true;
 
-    // How long the sticks must sit at zero before the brace engages, in ms. This exists because the
-    // robot is still coasting the moment the stick is released: hold instantly and it lurches
-    // backwards to a pose it has already passed. Set to 0 to snap back to the exact release point.
-    public static double holdEntryDelayMs = 250;
+    // Stick movement smaller than this counts as "not driving", 0..1. Pedro's own default is what
+    // this started at; raise it if a drifting stick stops the brace from ever engaging.
+    public static double holdInputThreshold = 0.01;
 
-    // false makes the brace fight HARDER. Pedro scales hold corrections down by
-    // holdPointTranslationalScaling / holdPointHeadingScaling (0.45 / 0.35 in FollowerConstants) so
-    // a hold is gentle by default. Turn this off if an opponent can still shove us off the spot;
-    // leave it on if the robot jitters or hunts around the held pose.
-    public static boolean holdUseScaling = true;
+    // The robot must also be moving slower than this, in/s, before the brace grabs the pose. This
+    // is why the brace no longer needs an entry delay: the robot is still coasting the moment the
+    // stick is released, and holding instantly would snap it back to a pose it has already passed.
+    // Pedro waits for the coast to finish instead of guessing at a delay.
+    // REPLACED 2026-09-22: holdEntryDelayMs and holdUseScaling. Pedro 3's ManualDrive.driveOrHold
+    // owns this behavior now, and it takes a velocity threshold rather than a timer.
+    public static double holdVelocityThreshold = 1.0;
 
     // Default timeout for DriveToPoseCommand, in seconds. Every command needs a timeout so nothing
     // can hang the robot for a whole match (§5). A single move that takes longer than this has gone
