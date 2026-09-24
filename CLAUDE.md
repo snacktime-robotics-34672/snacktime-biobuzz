@@ -80,7 +80,7 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
   **Update the app from Android Studio, never from the REV Hardware Client's "install Robot
   Controller app" button.** That button installs FIRST's stock app, which would wipe every OpMode we
   wrote and the Sloth runtime with them. It is meant for Blocks and OnBot Java teams, not us.
-- **Language / Framework:** **Java** with **SolversLib 0.3.4** (the maintained FTCLib fork) — command +
+- **Language / Framework:** **Java** with **SolversLib 0.3.6** (the maintained FTCLib fork) — command +
   subsystem model. Hosted on the Dairy Foundation, the same home as Sloth. AI-readable docs at
   `docs.seattlesolvers.com/llms.txt` (any page + `.md` returns markdown) — use them rather than
   guessing API names. **Never add FTCLib**: the two cannot coexist.
@@ -92,6 +92,15 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
   when bumping either. Never assume what resolved — verify with `./gradlew :TeamCode:dependencies`,
   and prove pathing actually runs in Phase 0 (§13), because a mismatch surfaces at **runtime**, not
   at build. Changing this pin is WARN-AND-CONFIRM (§6).
+  **Watch `com.pedropathing:tuning` (AutoTune) — it is the startup risk in this stack.** Its
+  `TunerScanner.getTargets()` builds a fresh search target on every call instead of keeping one, and
+  Sinister calls it once per class it scans. Cost therefore grows with the number of classes in the
+  APK. On 2026-09-23 it ran for over 15 seconds, the app never finished starting, and the hub
+  watchdog relaunched it forever — the Driver Station showed no OpModes and nothing looked like an
+  error. Removing FTC Dashboard cut the class count enough that it now finishes in under a
+  millisecond, **but the margin is thin**. If startup ever hangs after you add a library, suspect
+  this first, and confirm it from the ANR trace (§14). Versions 1.0.0 and 1.0.1 are byte-identical,
+  so there is no version to fall back to.
 - **Perception:** Limelight 3A as an on-board coprocessor. All detection runs on the Limelight,
   never on the Control Hub.
 - **Dashboard:** **Panels** — ships the whole bundle: field view, live graphs, live configurables
@@ -102,9 +111,17 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
   Two classes, same name, separate values: Panels writes one, the robot reads the other, and nothing
   errors. That made Tier 1 live tuning silently dead for every tunable until 2026-08-30. The fork
   registers through Sinister, so Sloth hands it the real class and loader and only one copy exists.
-  Same story for FTC Dashboard: use `com.acmerobotics.slothboard:dashboard`, never the stock one.
-  **After any Panels or Sloth version bump, re-check the canary** (type a number into
-  `PanelsProbe.probe` and watch the Tuning telemetry move) — this failure mode is completely silent.
+  **After any Panels or Sloth version bump, re-check the canary** — run the `34672 Panels Canary`
+  OpMode, type a number into `PanelsProbe.probe`, and watch the CANARY line follow it. This failure
+  mode is completely silent, so the canary is the only thing that catches it.
+  **FTC Dashboard is NOT in this stack — do not add it back.** We ran the Sloth fork
+  (`com.acmerobotics.slothboard:dashboard`) until 2026-09-23 and removed it. It and Panels each
+  start their own Limelight forwarder, and both want ports 5800/5801/5805/5807. Whichever started
+  second threw `java.net.BindException: Address already in use` out of NanoHTTPD, which is fatal:
+  the Robot Controller app died about 30 seconds after every start, so the Driver Station never
+  held a usable OpMode list. Panels already ships a Limelight proxy, so the dashboard was
+  duplicating it, and our code never referenced `com.acmerobotics` at all. If you ever do add it
+  back, expect the port clash to return.
 - **Fast reload:** Sloth (see §6).
 
 ### Why this stack (decided)
@@ -216,7 +233,7 @@ does the job, and structure new code so tuning stays in the cheap tiers.
 Any *value* you might tune is a configurable field, changed from the dashboard in real time with
 **no deploy at all**. This covers most day-to-day tuning, because most tuning is numbers.
 
-- Mark tunables as configurable (Panels `@Configurable` / FTC Dashboard `@Config`), `static`,
+- Mark tunables with Panels' `@Configurable`, `static`,
   non-`final`.
 - **Rule:** if it is a number you might adjust at a competition, it **must** be a configurable —
   never a hardcoded literal. Examples: PID/PIDF gains, feedforward constants, mechanism powers,
@@ -584,6 +601,13 @@ never let diagnostics tax the match loop.
   "why did it crash" and "did this branch actually run." Weakness: it's volatile — gone when you
   disconnect, so it can't diagnose a match you couldn't stay tethered to. Log meaningfully (all
   errors, key state transitions); never spam it from the hot loop.
+  **Startup floods this log — filter by tag or you will see nothing.** The SDK's `ClassManager`
+  throws thousands of `ClassNotFoundException`s *with full stack traces* while it scans classes.
+  These are harmless (they are probes for optional classes such as `javax.swing.JPanel`, which never
+  exist on Android), but they push the ring buffer over so fast that `adb logcat -d` can hold only a
+  few seconds of history. Ask for the tags you want instead:
+  `adb logcat -s SinisterRegisteredOpModes:V SlothTeamCodeLoader:V` shows the teamcode load and every
+  OpMode that registered. `adb logcat -G 32M` does not work on this hub.
 - **Persistent RC match logs** — the Robot Controller writes durable log files to the hub for every
   OpMode run (errors, system events). They survive disconnection — pull them via ADB or the hub's
   Manage page to review a qualifier match hours later. This is logcat's blind spot, covered.
@@ -597,6 +621,16 @@ never let diagnostics tax the match loop.
   stop. Rules: open once (start), never flush per loop, close on stop, keep columns few, and treat
   it as a bench/diagnostic tool you switch on to investigate — not always-on match logging. The
   skeleton ships a `Datalogger` utility (`util/Datalogger.kt`).
+- **ANR traces (`/data/anr/traces.txt`)** — the hub's own thread dump, written whenever Android
+  decides the app stopped responding. **This is the tool for "the robot will not start."** It names
+  the exact thread and line that is stuck, which no other tool here can do. Read it with
+  `adb shell cat /data/anr/traces.txt`; the `"main"` thread block is the top of the file, and the
+  worker threads follow it. The pattern to look for: `main` parked in `CompletableFuture.join()`
+  inside `SinisterImpl.scanLoad` means the boot scan has not finished, and exactly one
+  `"default threadpool-#N"` thread will be `Runnable` while the rest sit `TimedWaiting` — that one
+  thread's stack is the culprit. This found both 2026-09-23 startup bugs (§2). Check the header's
+  pid against the live app (`adb shell pidof com.qualcomm.ftcrobotcontroller`): the file is easy to
+  mistake for current when it is stale.
 - **Android Profiler** — profiles CPU, memory, and allocations on the running app. This is how we
   actually defend the prime directive (§0): when Loop Hz drops and the cause isn't obvious, the
   profiler finds the method eating the budget or the allocations causing the GC hitches.
@@ -607,7 +641,22 @@ never let diagnostics tax the match loop.
 - **Limelight web interface** — live camera feed, detection overlays, and vision-pipeline tuning.
 - **REV Hardware Client** + the hub's **Manage** page — firmware/OS updates, Wi-Fi, configuration,
   and below-the-code diagnostics for when a hub itself misbehaves.
-- **ADB** — the connection layer under most of the above; works over Wi-Fi for a moving robot.
+- **ADB** — the connection layer under most of the above; works over Wi-Fi for a moving robot, and
+  over the Control Hub's USB-C port when you are at the bench. Three things learned 2026-09-23:
+  **run `adb devices -l` before you believe any deploy** — a stale Wi-Fi entry reading `offline`
+  hides a working cable and makes Android Studio install to nothing, and only `adb disconnect` +
+  `adb kill-server` clears it (`adb connect` and `adb reconnect offline` do not). **`adb root`
+  works** on this hub — it is a userdebug build — which is what lets you read `/data/anr/`. And the
+  hub has no battery-backed clock: it takes its time from the **Driver Station**, so with no DS
+  connected it sits in 1969, which makes snapshot timestamps (§7) and the `LogCleanup` age check
+  meaningless.
 - **Pedro Pathing Visualizer** — design and preview autonomous paths on a laptop before deploying.
+- **`dexdump` on the installed APK** — how you find out *which library* owns a class when a library
+  is misbehaving and its name is nowhere in the error. Pull the APK
+  (`adb pull $(adb shell pm path com.qualcomm.ftcrobotcontroller | sed 's/package://')`), unzip it,
+  and run `dexdump -f classes*.dex` (it ships in the Android SDK build-tools). Grepping the output
+  for `Superclass` named every web server in the app in one pass, which is how the Limelight port
+  clash in §2 was pinned on FTC Dashboard rather than guessed at. The same trick answers "is library
+  X actually in this build" — the answer is in the APK, not the Gradle file.
 - **CI (GitHub Actions)** — auto-run the off-robot unit tests (§9) on every push, so a generated
   change is verified before it reaches the robot.

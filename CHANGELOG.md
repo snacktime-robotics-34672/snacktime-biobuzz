@@ -20,6 +20,15 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **Brought the charter back in line with what the robot actually runs.** `CLAUDE.md` still told you
+  to install FTC Dashboard and to tag tunables with its `@Config`, both of which stopped being true
+  when the dashboard came out of the stack earlier today - following §6 as written would not have
+  compiled. §2 now says FTC Dashboard is out and why, warns that Pedro's AutoTune module is the
+  startup risk to watch, points the canary at the real OpMode name, and corrects SolversLib 0.3.4 to
+  the 0.3.6 we actually run. §14 gains the two tools that found today's bugs - the hub's ANR trace
+  for "the robot will not start", and `dexdump` on the installed APK for "which library owns this
+  class" - plus the reason logcat looks empty during startup and the adb traps that cost us an
+  evening. (CLAUDE.md §2, §6, §14)
 - **A full install now fixes itself up afterwards, so nobody has to remember two easy-to-forget
   steps.** Installing used to leave the robot in a state that looks fine and is not: Android
   installs an app as "interpret-only" so the Robot Controller runs slowly enough that the hub
