@@ -4,6 +4,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.RobotLog;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
@@ -11,6 +12,7 @@ import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
+import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
  * Intake — the two motors that pull game pieces in.
@@ -40,6 +42,19 @@ import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
  *
  * LOOP COST: two motor writes per loop while the intake runs, and NOTHING at all when it is stopped
  * (see {@link #setPower(double)} — repeat writes of the same value are skipped).
+ *
+ * OPTIONAL PER ROBOT (CLAUDE.md §2 "two robots, one codebase"): this mechanism is bolted to the test
+ * bot only, while the two robots diverge on game-piece handling before the comp robot has it too.
+ * Rather than add L_INTAKE/R_INTAKE to the comp robot's hardware configuration just so a constructor
+ * doesn't throw, this class knows — from {@link RobotIdentity}, resolved once at init like everything
+ * else that is robot-aware — whether IT is bolted to the robot it is running on, and simply never
+ * touches {@code hardwareMap} when it is not. Every intent-level method below still exists and is
+ * still safe to call on a robot without the mechanism; it just does nothing. That keeps every OpMode
+ * that uses Intake identical on both robots — no {@code if (robot has intake)} scattered through
+ * TeleOp or an auto tree. See {@link #isPresentOn} for which robots have it and {@link #isPresent()}
+ * to ask this instance. A robot that IS supposed to have it still fails loud at construction if the
+ * motors are missing from its hardware configuration (§5) — this only changes behavior for a robot
+ * that was never supposed to have the mechanism in the first place.
  */
 @Configurable
 public class Intake extends SubsystemBase {
@@ -107,6 +122,17 @@ public class Intake extends SubsystemBase {
     public static final String LEFT_MOTOR_NAME = "L_INTAKE";
     public static final String RIGHT_MOTOR_NAME = "R_INTAKE";
 
+    /**
+     * True when this mechanism is bolted to the given robot. Test bot only, for now — the comp
+     * robot's expansion hub and intake are not built yet. Change this check (e.g. to also allow
+     * {@code RobotIdentity.Robot.COMPETITION}, or with {@code ||} for more robots) once that
+     * changes; nothing else in this class needs to change. UNKNOWN is treated as absent (fail closed).
+     */
+    public static boolean isPresentOn(RobotIdentity id) {
+        return id.robot == RobotIdentity.Robot.TESTBOT;
+    }
+
+    private final boolean present;
     private final MotorEx left;
     private final MotorEx right;
 
@@ -119,10 +145,24 @@ public class Intake extends SubsystemBase {
     /** Whether the last write used rightInverted, so a live flip is noticed and re-written. */
     private boolean lastRightInverted = rightInverted;
 
-    public Intake(HardwareMap hardwareMap) {
+    public Intake(HardwareMap hardwareMap, RobotIdentity id) {
+        present = isPresentOn(id);
+        if (!present) {
+            // NOT a fault: this robot was never supposed to have the mechanism, so hardwareMap is
+            // never touched — no need to add L_INTAKE/R_INTAKE to a hub config that doesn't have
+            // them. Loud anyway, so "why doesn't the intake do anything" has an answer in the log.
+            left = null;
+            right = null;
+            RobotLog.ii("Intake", "not present on %s (%s) — mechanism disabled, hardwareMap untouched",
+                    id.robot, id.networkName);
+            return;
+        }
+
         // Throws at init if either motor is missing from the hub configuration — deliberate. A
         // half-present intake must stop the OpMode on the bench, not surface as one dead roller
-        // mid-match (§5 deterministic init, fail loud).
+        // mid-match (§5 deterministic init, fail loud). This still applies to any robot
+        // isPresentOn() says has the mechanism — only a robot that was never supposed to have it
+        // skips this check.
         left = new MotorEx(hardwareMap, LEFT_MOTOR_NAME);
         right = new MotorEx(hardwareMap, RIGHT_MOTOR_NAME);
 
@@ -135,15 +175,22 @@ public class Intake extends SubsystemBase {
         right.set(0.0);
     }
 
+    /** True when this instance is actually bolted to the robot it was built on. */
+    public boolean isPresent() {
+        return present;
+    }
+
     // ---- Intent-level methods ---------------------------------------------------------------
 
-    /** Runs both rollers at the tuned power, capped by {@link #maxPower}. */
+    /** Runs both rollers at the tuned power, capped by {@link #maxPower}. No-op when not present. */
     public void intake() {
+        if (!present) return;
         setPower(IntakeLogic.clamp(intakePower, maxPower));
     }
 
-    /** Stops both rollers. Safe to call repeatedly. */
+    /** Stops both rollers. Safe to call repeatedly, and safe to call when not present. */
     public void stop() {
+        if (!present) return;
         setPower(0.0);
     }
 
@@ -158,6 +205,7 @@ public class Intake extends SubsystemBase {
      * rather than waiting for the power to change.
      */
     public void setPower(double power) {
+        if (!present) return;
         double safe = IntakeLogic.clamp(power, maxPower);
         if (safe == commandedPower && rightInverted == lastRightInverted) return;
         commandedPower = safe;
@@ -166,9 +214,9 @@ public class Intake extends SubsystemBase {
         right.set(IntakeLogic.sidePower(safe, rightInverted));
     }
 
-    /** True while the intake is being driven. What the Driver Hub shows (§8). */
+    /** True while the intake is being driven. Always false when not present. What the Driver Hub shows (§8). */
     public boolean isRunning() {
-        return commandedPower != 0.0;
+        return present && commandedPower != 0.0;
     }
 
     /** The mechanism power last commanded — what the LEFT motor was sent. */
@@ -189,6 +237,7 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
+        if (!present) return; // nothing to report for a mechanism that isn't on this robot
         // Bench detail, off during matches (§4 rule 8). Numbers, not built strings.
         if (TuningConfig.verboseTelemetry) {
             TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();

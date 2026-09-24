@@ -64,6 +64,11 @@ public class IntakeCommand extends CommandBase {
 
     @Override
     public boolean isFinished() {
+        // Not present on this robot (CLAUDE.md §2 "two robots, one codebase") — intake.intake() in
+        // initialize() was already a no-op, so end this immediately instead of sitting on the
+        // requirement doing nothing until the timeout.
+        if (!intake.isPresent()) return true;
+
         if (timer.seconds() >= effectiveTimeout()) {
             RobotLog.ww("Intake", "TIMEOUT after %.1fs — intake stopped. Release the trigger and "
                     + "squeeze again to restart, or raise Intake.intakeTimeoutSec.", timer.seconds());

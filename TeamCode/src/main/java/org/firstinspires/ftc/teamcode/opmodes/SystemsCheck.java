@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.util.Persistence;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -25,16 +26,6 @@ import java.util.List;
  */
 @TeleOp(name = "34672 Systems Check", group = "diagnostics")
 public class SystemsCheck extends LinearOpMode {
-
-    // Names must match the Robot Controller configuration exactly (CLAUDE.md §10).
-    // Add game-mechanism motors here when they are wired and configured.
-    private static final String[] MOTOR_NAMES = {
-            "LF_Motor", "LR_Motor", "RF_Motor", "RR_Motor",
-            // Game mechanisms. The pulse below spins each one briefly, one at a time — watch that
-            // the named roller is the one that moves. A swapped L/R port passes every other check
-            // and only shows up here.
-            Intake.LEFT_MOTOR_NAME, Intake.RIGHT_MOTOR_NAME
-    };
 
     @Override
     public void runOpMode() {
@@ -55,8 +46,23 @@ public class SystemsCheck extends LinearOpMode {
             notes.add("WARN robot identity UNKNOWN — set the hub name to 34672-RC or 34672-T-RC");
         }
 
+        // Motors to check on THIS robot: names must match the Robot Controller configuration
+        // exactly (CLAUDE.md §10). Start with the motors EVERY robot has, unconditionally; add more
+        // here only once they are wired and configured on BOTH robots. A mechanism only some robots
+        // have (like Intake) is added per-robot instead, via Intake.isPresentOn (CLAUDE.md §2/§6
+        // "two robots, one codebase") — a robot that was never supposed to have it is SKIPPED, not
+        // FAILED, since lacking it is not a wiring fault.
+        List<String> motorNames = new ArrayList<>();
+        Collections.addAll(motorNames, "LF_Motor", "LR_Motor", "RF_Motor", "RR_Motor");
+        if (Intake.isPresentOn(robotId)) {
+            motorNames.add(Intake.LEFT_MOTOR_NAME);
+            motorNames.add(Intake.RIGHT_MOTOR_NAME);
+        } else {
+            notes.add("SKIP intake motors — not bolted to " + robotId.robot);
+        }
+
         // --- check each motor is present and configured ---
-        for (String name : MOTOR_NAMES) {
+        for (String name : motorNames) {
             boolean ok;
             try {
                 hardwareMap.get(DcMotorEx.class, name);
@@ -146,7 +152,7 @@ public class SystemsCheck extends LinearOpMode {
         if (!opModeIsActive()) return;
 
         // Active check: pulse each motor so a human confirms the RIGHT mechanism moves.
-        for (String name : MOTOR_NAMES) {
+        for (String name : motorNames) {
             if (!opModeIsActive()) break;
             DcMotorEx motor;
             try {

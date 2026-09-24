@@ -19,6 +19,29 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-23
+- **Intake is now an optional, per-robot mechanism.** It is bolted to the test bot but the comp
+  robot has no Expansion Hub yet, so `subsystems/Intake` now takes the robot identity resolved at
+  init and checks an explicit allow-list (`Intake.isPresentOn`, test bot only today) before it ever
+  touches `hardwareMap`. Every method (`intake()`, `stop()`, …) is still safe to call on a robot
+  without the mechanism — it just does nothing — so TeleOp and SystemsCheck stay identical on both
+  robots with no per-robot branches, and there's no need to add `L_INTAKE`/`R_INTAKE` to the comp
+  robot's hardware configuration just to keep construction from throwing. A robot that IS on the
+  allow-list still fails loud at construction if its intake motors are missing (unchanged, §5).
+  SystemsCheck now SKIPs the intake motors instead of FAILing when they're not on the resolved
+  robot, and the TeleOp Driver Hub shows "not on this robot" instead of a plain "off" so it can't be
+  read as "the intake is broken." (subsystems/Intake.java, commands/IntakeCommand.java,
+  opmodes/TeleOpExample.java, opmodes/SystemsCheck.java, CLAUDE.md §10)
+- **Documented the optional-mechanism pattern as a general rule, not just an Intake footnote.**
+  CLAUDE.md §6 gets a new "Two robots, one codebase — optional mechanisms" subsection spelling out
+  the contract (RobotIdentity-checked presence, no hardwareMap access when absent, every method a
+  safe no-op, SKIP not FAIL in a pre-match check) so the next mechanism that reaches the two robots
+  at different times has a pattern to follow instead of re-deriving one. §10's Intake write-up now
+  just points at it. Also simplified `Intake.isPresentOn` to a plain `id.robot == TESTBOT` check
+  instead of an `EnumSet`, and reworked SystemsCheck's motor list to build one list in place (shared
+  names added unconditionally, Intake's added conditionally) instead of seeding it from a separate
+  static array. (CLAUDE.md §3/§6/§10, subsystems/Intake.java, opmodes/SystemsCheck.java)
+
 ## 2026-09-21
 - **New "Launcher" OpMode for bench testing a launcher wheel.** Hold X and the motor spins at 90%;
   release and it stops and coasts down. The power is a live Panels knob, so you can try other speeds

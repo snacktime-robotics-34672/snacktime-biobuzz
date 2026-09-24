@@ -88,7 +88,7 @@ public class TeleOpExample extends CommandOpMode {
         LogCleanup.maybeRun(telemetry); // fires once every 14 days, silent otherwise
 
         drivetrain = new Drivetrain(hardwareMap);
-        intake = new Intake(hardwareMap);
+        intake = new Intake(hardwareMap, robotId); // no-ops itself on a robot without the mechanism
         driver = new GamepadEx(gamepad1);
 
         // RIGHT TRIGGER = hold to run the intake, release to stop.
@@ -223,7 +223,10 @@ public class TeleOpExample extends CommandOpMode {
         // Constant strings, so no per-loop allocation (§4 rule 8).
         telemetry.addData("Drive", driveModeLabel(standYourGround.getState()));
         // Intake state is on §8's Driver Hub list. Constant strings, so no per-loop allocation.
-        telemetry.addData("Intake", intake.isRunning() ? "ON" : "off");
+        // "not on this robot" beats a plain "off" — a driver on the comp robot should not read that
+        // as "the intake is broken," and it should not look identical to "off but working."
+        telemetry.addData("Intake", !intake.isPresent() ? "not on this robot"
+                : intake.isRunning() ? "ON" : "off");
         telemetry.addData("Loop Hz", loopTimer.getHz());
         telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
         telemetry.addData("X in", follower.getPose().getX());

@@ -126,7 +126,10 @@ Each layer only talks to the one directly below it.
    (e.g. Pedro's geometry) rather than wrapping them to stay swappable.
 2. **Subsystems** — Drivetrain, Intake, Vision, Localization (adjust to the season's
    game). Each owns its hardware and exposes *intent-level* methods (`intake.intake()`), and
-   publishes its own state and health telemetry.
+   publishes its own state and health telemetry. A mechanism not yet bolted to both robots is
+   OPTIONAL PER ROBOT, decided by the subsystem itself from `RobotIdentity` — never by editing a
+   robot's hardware configuration to work around it (§6 "Two robots, one codebase — optional
+   mechanisms").
 3. **Commands** — small, composable units reused across auto and teleop. Complex behavior is built
    by composing sequential and parallel groups, **not** by hand-rolling state machines.
 4. **OpMode orchestration** — thin. Auto builds a command tree; teleop binds gamepad to commands.
@@ -334,6 +337,46 @@ hub network name — see §10). Two tuning categories, handled differently *on p
     persists but never reaches the follower looks perfectly tuned everywhere else; this is the only
     check that catches that, and it is a real failure we found in another team's codebase.
 
+### Two robots, one codebase — optional mechanisms — NON-NEGOTIABLE
+The two robots also diverge on **which mechanisms exist at all**, not just tuning. Mechanical build
+finishes at different times on each robot, so a mechanism the test bot has bolted on today may not
+reach the comp robot for weeks — or a redesign may mean it never does. That is an expected, ordinary
+state of the project, not a bug, and the codebase must not fight it by adding a device to a robot's
+hardware configuration just to keep a constructor from throwing, or by scattering
+`if (robot has X)` checks through TeleOp, an auto tree, or SystemsCheck.
+
+Instead, an optional mechanism's own subsystem knows whether it is bolted to the robot it is running
+on, resolved once from `RobotIdentity` (§10) exactly like tuning selection is. The shape, first
+applied to `subsystems/Intake` (test bot only until the comp robot's Expansion Hub is built — §10):
+
+- The subsystem constructor takes a `RobotIdentity` alongside `HardwareMap`, and exposes a static
+  `isPresentOn(RobotIdentity id)` naming which robot(s) have it. Prefer a plain equality check
+  (`id.robot == RobotIdentity.Robot.TESTBOT`) over a collection like `EnumSet` for a short allow-list
+  — a direct comparison is what the Explain-It Gate (§1) asks a student reviewer to read and defend
+  at a glance, and reaching for more machinery than the allow-list needs is exactly the unearned
+  complexity §1 says to cut.
+- When absent, the constructor returns without ever touching `hardwareMap` — the device does not
+  need to exist in that robot's configuration at all.
+- Every intent-level method on the subsystem (`intake()`, `stop()`, …) checks the instance's own
+  stored presence flag first and returns immediately if absent, so calling it is always safe. This
+  is what keeps TeleOp, an auto tree, or any command that uses the mechanism identical on both
+  robots — the subsystem is the ONE place that knows, matching the hardware-abstraction boundary
+  in §3, the same way a hardware wrapper is the one place that knows about wiring.
+- A robot that IS on the allow-list still fails loud at construction if its hardware is missing (§5
+  is unchanged) — this pattern only changes behavior for a robot that was never supposed to have the
+  mechanism. Presence is decided by the allow-list, never by whether a hub happens to have the
+  device configured.
+- Anything that enumerates hardware for a human — SystemsCheck, Driver Hub telemetry — must tell
+  "not on this robot" apart from a fault or an ordinary "off" state. A pre-match check SKIPs an
+  absent-by-design mechanism rather than FAILing it, since not being there yet is not a wiring fault;
+  a status line reads "not on this robot" rather than a plain "off" a driver could mistake for broken.
+
+Use this same shape for the next mechanism that reaches the two robots at different times.
+
+Future consideration - If at some point we have two robots where the same conceptual subsystem has
+different hardware requiring different hardware maps or control software, consider using an interface
+factory pattern. The factory can return the appropriate control class based on the RobotIdentity.
+
 ---
 
 ## 7. Persistence & snapshots — data and tuning to disk
@@ -461,7 +504,7 @@ Persistent control/sensor suite (carries across seasons):
 | Role | Device | Bus | Notes |
 |------|--------|-----|-------|
 | Controller | REV Control Hub | — | drive motors, Pinpoint; MANUAL bulk caching |
-| Expansion hub | REV Expansion Hub | RS485 | intake motors; MANUAL bulk caching too — `util/BulkReads` sets and clears EVERY hub, so a second hub needs no code change. It is a second bulk read per loop, on a slower link than the Control Hub's own ports: watch Loop Hz (§0) |
+| Expansion hub | REV Expansion Hub | RS485 | intake motors; **test bot only today** — the comp robot has no Expansion Hub yet, see the Intake row below; MANUAL bulk caching too — `util/BulkReads` sets and clears EVERY hub, so a second hub needs no code change. It is a second bulk read per loop, on a slower link than the Control Hub's own ports: watch Loop Hz (§0) |
 | Actuator hub | REV Servo Hub | — | needs RC + DS apps on 10.0+ to configure as a Servo Hub (else shows as generic Expansion Hub); firmware/address via REV Hardware Client |
 | Vision | Limelight 3A, config name `limelight` | USB 3.0 | detection on-device; used for relative **aiming, not pose** (§3); camera height/pitch are live tunables on `subsystems/Vision` |
 | Odometry | goBILDA Pinpoint (V2), config name `pinpoint` | I2C | **single source of pose (no fusion)**; read once/loop; mind wire routing/ferrite; pod offsets measured on-robot 2026-07-18 (`forwardPodY=6.735`, `strafePodX=0.287` in `pedroPathing/Constants.java`) |
@@ -470,14 +513,20 @@ Persistent control/sensor suite (carries across seasons):
 | Drivetrain LR | `LR_Motor` (port 1) | — | goBILDA Yellow Jacket |
 | Drivetrain RF | `RF_Motor` (port 2) | — | goBILDA Yellow Jacket |
 | Drivetrain RR | `RR_Motor` (port 3) | — | goBILDA Yellow Jacket |
-| Intake L | `L_INTAKE` (**Expansion Hub** port 0) | RS485 | left roller; no current monitoring — watched by eye at the bench |
-| Intake R | `R_INTAKE` (**Expansion Hub** port 1) | RS485 | right roller; runs opposite the left when `Intake.rightInverted` is set (live flag) |
+| Intake L | `L_INTAKE` (**Expansion Hub** port 0) | RS485 | **test bot only** (see below); left roller; no current monitoring — watched by eye at the bench |
+| Intake R | `R_INTAKE` (**Expansion Hub** port 1) | RS485 | **test bot only** (see below); right roller; runs opposite the left when `Intake.rightInverted` is set (live flag) |
 
 Both intake motors are one mechanism, owned by one subsystem (`subsystems/Intake`): they start,
 stop, and run together, and the TeleOp right trigger holds them on. They are the first devices we
 run on the **Expansion Hub**, so every intake write crosses the RS485 link and costs more than a
 Control Hub write — the subsystem skips repeat writes for exactly this reason. The drive motors and
 the Pinpoint stay on the Control Hub.
+
+**Intake is the first OPTIONAL mechanism** — bolted to the test bot but not the comp robot, which has
+no Expansion Hub at all yet. It follows the general pattern documented in §6 "Two robots, one
+codebase — optional mechanisms": `subsystems/Intake` checks `Intake.isPresentOn(id)` before it ever
+touches `hardwareMap`, so the comp robot's hardware configuration needs no `L_INTAKE`/`R_INTAKE`
+entries at all. See §6 for the full contract before adding the next optional mechanism.
 
 **Game-specific mechanisms** (fill in at kickoff — e.g. intake, delivery, lift): add each with
 its config name, port, and the intent-level methods its subsystem exposes. Keep any real mechanism
