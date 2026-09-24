@@ -20,6 +20,23 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **THE ROBOT BOOTS. Removed FTC Dashboard, because it and Panels were fighting over the
+  Limelight ports.** The Robot Controller app had been dying about 30 seconds after every start
+  with `java.net.BindException: Address already in use`, so the Driver Station never held a usable
+  OpMode list. Both dashboards run their own Limelight forwarder and both want ports
+  5800/5801/5805/5807; whichever started second threw, and that throw kills the app. Panels already
+  ships a Limelight proxy (`CLAUDE.md` §2), so FTC Dashboard was duplicating it, and our code never
+  referenced `com.acmerobotics` at all. Removing the `dashboard` artifact takes only the servers -
+  `slothboard:core` went with it and Panels resolves fine alone. Measured after: app process stable
+  for over three minutes, zero crashes, zero relaunches, all six OpModes registered, and a Sloth hot
+  reload landed in the running process without restarting it. (TeamCode/build.gradle)
+- **Put Pedro's AutoTune module back, at Aaron's direction.** With FTC Dashboard gone there are far
+  fewer classes for Sloth's scanner to walk, and `TunerScanner`'s uncached search target - the bug
+  that hung startup earlier today - no longer costs enough to stop the app booting. **The margin is
+  small:** one slow-startup warning still appeared, and the app survived it. If startup ever hangs
+  again after adding a library, this is the first thing to suspect. Note the tuning procedures
+  themselves are still deleted, so AutoTune has no procedure wired to it yet.
+  (TeamCode/build.gradle)
 - **Removed Pedro's AutoTune module, because it stopped the robot from starting at all.** The
   Driver Station showed no OpModes and the Robot Controller app restarted about every 50 seconds.
   The cause was `com.pedropathing:tuning`: its `TunerScanner` asks for a fresh search target every
