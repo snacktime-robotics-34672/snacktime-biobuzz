@@ -30,10 +30,14 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * comp robot's numbers (CLAUDE.md §6).
  *
  * WHAT TO DO WITH THE RESULT: each procedure prints a paste-ready block of Java. Put its numbers in
- * the matching fields in {@link Constants} for the robot you tuned, set that robot's
- * {@code ...PedroTuned} flag true so it stops being capped to half power, and commit. You can also
- * turn the same values in Panels and commit that robot's tuning file (§6) — the fields are ordinary
- * tunables now.
+ * the matching fields in {@link Constants} for the robot you tuned, and commit. That sets the
+ * in-code fallback. You can also turn the same values in Panels and commit that robot's tuning file
+ * (§6) — the fields are ordinary tunables now, and the committed file is the canonical copy.
+ *
+ * There is NO "tuned" flag to set any more. A `...PedroTuned` flag used to gate a half-power cap on
+ * an untuned robot; it was dropped in `47870bb`. Only an UNKNOWN hub — one whose network name is
+ * neither `34672-RC` nor `34672-T-RC` — is capped now, at {@code Constants.fallbackMaxPower}. The
+ * two known robots always run at their own {@code ...MaxPower}, tuned or not.
  */
 public class Tuning {
 

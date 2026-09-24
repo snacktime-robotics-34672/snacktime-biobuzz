@@ -20,6 +20,22 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **The competition robot's tuning is in git again, and it is the Pedro 3 file this time.** The
+  committed copy had gone stale: 26 of its 73 keys pointed at fields that no longer exist - the
+  whole Pedro 2 `Pedro.*` block, plus `holdEntryDelayMs`, `holdUseScaling` and
+  `pedroTuningLoadEnabled`. The hub's own file was the current one, with 100 keys and none dead,
+  and it held **measured values that existed nowhere else**: both robots' pod offsets and drive
+  velocities, including the test bot's `strafePodX = 2.1985` that `STATUS.md` still listed as
+  missing from the hub. A reflash would have lost them. Pulled it in whole, as §6 requires. Two
+  values were set by hand before committing, because a dashboard edit made with no OpMode running
+  is never saved: **the drive-current monitor is off** and **stand-your-ground is on**. The same
+  file was pushed back to the hub, so the robot and git now match exactly. (tuning/comp_tuning.json)
+- **Removed a tuning instruction that told you to set a flag we deleted.** `Tuning.java` still said
+  to set a `...PedroTuned` flag "so it stops being capped to half power". That flag was dropped in
+  `47870bb` and the comment was missed. It now says what is actually true: there is no tuned flag,
+  and only an UNKNOWN hub is power-capped, at `Constants.fallbackMaxPower`. The `fallback*`
+  constants are NOT dead code - they are the fail-closed path for an unidentified hub (§6).
+  (pedroPathing/Tuning.java)
 - **Brought `STATUS.md` up to date — it was describing a robot that no longer exists.** It still
   said the stack was SDK 11 with Pedro 2 and FTC Dashboard installed, and still claimed the
   migration had never run on a robot. It now leads with tonight's two startup bugs and their fixes,
