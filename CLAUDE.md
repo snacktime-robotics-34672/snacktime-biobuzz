@@ -258,10 +258,15 @@ and power cycles. **This is the default deploy for code changes.**
   `ExternalLibraries`, and you can watch it happen in logcat as
   `OnBotLoadEventHandler: Handling staging of load event` on every push. Dropping OnBotJava would
   kill Tier 2 entirely. FIRST's own `FtcRobotControllerActivity` imports it too, so removing it does
-  not even compile without patching stock SDK code we re-merge every season. **If you see an
-  OnBot Java message on the Driver Station, that is normal** — it is Sloth's hot reload announcing
-  itself through OnBotJava's notification channel, not a fault, and not a sign that anyone is using
-  the on-robot editor.
+  not even compile without patching stock SDK code we re-merge every season.
+- **"Staged OnBotJava Load" on the Driver Station is normal — leave it alone.** It is Sloth, not
+  OnBot Java, and it means a reload was staged. Sloth prints one of four such lines
+  (`Staged TeamCode Load`, `Staged Sloth Load`, `Staged OnBotJava Load`,
+  `Staged ExternalLibraries Load`) and routes them to the Driver Station through OnBotJava's
+  notification channel, which is why they look like OnBot Java messages. You *can* silence them —
+  `Notifier.setDELEGATE(...)` is public — but **do not**: these lines are the only visible sign that
+  the reload pipeline is alive, and silencing them would hide a failed reload. We have already lost
+  an evening twice to failures that produced no visible error (§2).
 
 ### Tier 3 — Full install (~40s+, avoid when possible)
 A full install is required only when you:
