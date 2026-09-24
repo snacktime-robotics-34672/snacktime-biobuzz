@@ -20,6 +20,11 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **Live tuning confirmed working after the dashboard change.** `CLAUDE.md` §2 says to re-check the
+  canary after any Panels or Sloth change, and removing FTC Dashboard counted. Aaron ran
+  `PanelsProbe` on the competition robot and the value reached the robot, so Tier 1 tuning is intact
+  and the risk flagged earlier today is closed. Panels is at `http://192.168.43.1:8001` once you
+  join the robot's Wi-Fi. (verification only, no code change)
 - **`WORKFLOW.md` now says which button to press.** The run configurations ship with the repo, so
   everyone gets `deploySloth` and `fullInstall` in the Android Studio dropdown after a sync. Added a
   short table for which to pick, a warning not to use the green Run arrow (it skips Gradle, so the
