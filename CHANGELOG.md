@@ -20,6 +20,24 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **Removed Pedro's AutoTune module, because it stopped the robot from starting at all.** The
+  Driver Station showed no OpModes and the Robot Controller app restarted about every 50 seconds.
+  The cause was `com.pedropathing:tuning`: its `TunerScanner` asks for a fresh search target every
+  single time Sloth's scanner looks at a class, instead of building one and keeping it. With the
+  new SDK 12 and Pedro 3 libraries there are enough classes that this one scanner ran for over 15
+  seconds and the app never finished starting, so the hub's watchdog killed it and started it
+  again, forever. Read straight off the robot: twelve of thirteen scanner threads idle, one stuck
+  in `TunerScanner`. Versions 1.0.0 and 1.0.1 are the same file (identical SHA-1), so there was
+  nothing to fall back to. Removing it fixed the startup hang — the robot went from 22 startup
+  failures to none. **What this costs us: there is no AutoTune, so there is no procedure to tune
+  Pedro paths with.** Deleted `pedroPathing/Tuning.java` and the four files in
+  `pedroPathing/procedures/`, which only existed to feed AutoTune. Put the dependency back once
+  upstream caches that search target. (TeamCode/build.gradle, pedroPathing/)
+- **Known, still broken: the app crashes about 30 seconds after it starts.** A second, separate
+  fault, present before any of this change and not caused by it. Two web servers inside the app
+  want the same port: `java.net.BindException: Address already in use` in `NanoHTTPD`. It happens
+  with no teamcode on the hub at all, so it is the libraries, not our code. The robot is NOT
+  usable yet. (unresolved)
 - **New "34672 Panels Canary" OpMode, because the canary could not actually be checked.**
   `CLAUDE.md` §2 says to prove live tuning still works after any Panels or Sloth bump by typing into
   `PanelsProbe.probe` and watching a telemetry line follow it. That line did not exist anywhere in

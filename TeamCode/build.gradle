@@ -148,12 +148,23 @@ dependencies {
 
     // Pedro Pathing 3. The ARTIFACT NAMES changed in 3.0.0, they are not a version bump:
     //   com.pedropathing:ftc       -> com.pedropathing:revhub   (the REV hub bindings)
-    //   com.pedropathing:telemetry -> com.pedropathing:tuning    (the tuning/telemetry OpModes)
+    //   com.pedropathing:telemetry -> com.pedropathing:tuning    (AutoTune - REMOVED, see below)
     // Pedro 3 publishes to Maven Central, which the root build.gradle already declares.
     // SolversLib 0.3.6 above is REQUIRED with it: its pedroPathing module depends on
     // com.pedropathing:revhub:3.0.0, and 0.3.5 and older are built against Pedro 2.x.
     implementation 'com.pedropathing:revhub:3.0.1'
-    implementation 'com.pedropathing:tuning:1.0.1'
+
+    // DO NOT ADD com.pedropathing:tuning BACK until upstream caches its search target.
+    // AutoTune's TunerScanner.getTargets() returns `new NarrowSearch()` on EVERY call instead of
+    // caching it in a field. Sinister calls getTargets() once per class it scans, so each call
+    // rebuilds the whole exclusion list with String.split(). With SDK 12 + Pedro 3 + SolversLib
+    // + Panels the class count got big enough that this one scanner ran for 15+ seconds on the
+    // boot scan. The RC app never finished onCreate, the hub watchdog relaunched it after 10
+    // seconds, and the robot sat in a restart loop showing NO OpModes on the Driver Station.
+    // Proven on the comp robot 2026-09-23 from the hub's own ANR trace: 12 of 13 scanner threads
+    // idle, one pinned in TunerScanner.getTargets. Versions 1.0.0 and 1.0.1 are byte-identical
+    // (same SHA-1), so there is no version to fall back to. Removing it costs us AutoTune, which
+    // means Pedro path tuning has no procedure to run - see CHANGELOG 2026-09-23.
 
     // Panels Dashboard (Sloth fork). Version reads <sloth build>+<panels version>, same scheme as
     // the dashboard line above. MUST stay the Sloth fork: stock Panels finds tunables by scanning
