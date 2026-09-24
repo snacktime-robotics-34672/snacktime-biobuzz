@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.commands;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.paths.Path;
-import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.seattlesolvers.solverslib.command.CommandBase;
@@ -10,7 +9,7 @@ import com.seattlesolvers.solverslib.command.CommandBase;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 
 /**
- * FollowPathCommand — wraps a Pedro Path or PathChain as a SolversLib CommandBase so it can be
+ * FollowPathCommand — wraps a Pedro Path or Path as a SolversLib CommandBase so it can be
  * composed inside a command tree (SequentialCommandGroup, ParallelCommandGroup, etc.) instead of
  * hand-rolled as a state machine.
  *
@@ -38,7 +37,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 public class FollowPathCommand extends CommandBase {
 
     private final Follower follower;
-    private final PathChain path;
+    private final Path path;
     private boolean holdEnd;
     private double maxPower;
 
@@ -46,25 +45,6 @@ public class FollowPathCommand extends CommandBase {
     private double timeoutSeconds = -1;
     private final ElapsedTime timer = new ElapsedTime();
     private boolean timedOut;
-
-    public FollowPathCommand(Follower follower, PathChain path) {
-        this(follower, path, true, 1.0);
-    }
-
-    public FollowPathCommand(Follower follower, PathChain path, boolean holdEnd) {
-        this(follower, path, holdEnd, 1.0);
-    }
-
-    public FollowPathCommand(Follower follower, PathChain path, double maxPower) {
-        this(follower, path, true, maxPower);
-    }
-
-    public FollowPathCommand(Follower follower, PathChain path, boolean holdEnd, double maxPower) {
-        this.follower = follower;
-        this.path = path;
-        this.holdEnd = holdEnd;
-        this.maxPower = maxPower;
-    }
 
     public FollowPathCommand(Follower follower, Path path) {
         this(follower, path, true, 1.0);
@@ -80,7 +60,7 @@ public class FollowPathCommand extends CommandBase {
 
     public FollowPathCommand(Follower follower, Path path, boolean holdEnd, double maxPower) {
         this.follower = follower;
-        this.path = new PathChain(path);
+        this.path = path;
         this.holdEnd = holdEnd;
         this.maxPower = maxPower;
     }
@@ -91,7 +71,14 @@ public class FollowPathCommand extends CommandBase {
         return this;
     }
 
-    /** @param maxPower 0..1 cap on drive power during the follow */
+    /**
+     * @param maxPower 0..1 cap on drive power during the follow.
+     * @deprecated NO LONGER APPLIED. Pedro 3 sets the speed ceiling on the follower's Foresight
+     *             config ({@code maxPathSpeed}) when the follower is built, and gives no per-path
+     *             override. Kept so existing call sites still compile; set the cap in
+     *             {@code Constants} instead. Remove once nothing calls it.
+     */
+    @Deprecated
     public FollowPathCommand setMaxPower(double maxPower) {
         this.maxPower = maxPower;
         return this;
@@ -99,7 +86,7 @@ public class FollowPathCommand extends CommandBase {
 
     /**
      * Overrides the live default from {@link Drivetrain#followPathTimeoutSec} for this path. Raise
-     * it for a long multi-segment route; a whole PathChain runs under one timeout.
+     * it for a long multi-segment route; a whole Path runs under one timeout.
      */
     public FollowPathCommand setTimeout(double seconds) {
         this.timeoutSeconds = seconds;
@@ -110,8 +97,7 @@ public class FollowPathCommand extends CommandBase {
     public void initialize() {
         timer.reset();
         timedOut = false;
-        follower.setMaxPower(maxPower);
-        follower.followPath(path, holdEnd);
+        follower.follow(path);
     }
 
     @Override
@@ -120,7 +106,7 @@ public class FollowPathCommand extends CommandBase {
             timedOut = true;
             RobotLog.ww("FollowPath", "TIMEOUT after %.1fs — path did not finish. Robot stopped at "
                             + "(%.1f, %.1f). Raise the timeout if this path is legitimately long.",
-                    timer.seconds(), follower.getPose().getX(), follower.getPose().getY());
+                    timer.seconds(), follower.pose().x(), follower.pose().y());
             return true;
         }
         return !follower.isBusy();
@@ -128,10 +114,15 @@ public class FollowPathCommand extends CommandBase {
 
     @Override
     public void end(boolean interrupted) {
-        // Stop driving a path we have given up on. A clean finish with holdEnd set leaves Pedro
-        // holding the end point, which must not be disturbed.
+        // Stop driving a path we have given up on.
         if (interrupted || timedOut) {
-            follower.breakFollowing();
+            follower.stop();
+            return;
+        }
+        // A clean finish: hold the end pose if we were asked to. Pedro 3 does not take holdEnd as a
+        // follow() argument any more, so the hold is issued here, explicitly.
+        if (holdEnd) {
+            follower.hold(follower.pose());
         }
     }
 

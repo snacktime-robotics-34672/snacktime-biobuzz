@@ -73,7 +73,13 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
 
 ## 2. The stack
 
-- **Base:** FTC SDK **11.1.0** on the REV Control Hub (`compileSdk 34`, `minSdkVersion 24`, Java 8).
+- **Base:** FTC SDK **12.0.0** — the 2026-27 BIOBUZZ season release — on the REV Control Hub
+  (`compileSdk 34`, `minSdkVersion 24`, Java 8). Building it needs **Android Studio Narwhal 3
+  Feature Drop or later**, because SDK 12 moves to Gradle 9.1 and AGP 8.13.2; an older Android
+  Studio will fail to sync and will offer to downgrade AGP — **do not accept that**.
+  **Update the app from Android Studio, never from the REV Hardware Client's "install Robot
+  Controller app" button.** That button installs FIRST's stock app, which would wipe every OpMode we
+  wrote and the Sloth runtime with them. It is meant for Blocks and OnBot Java teams, not us.
 - **Language / Framework:** **Java** with **SolversLib 0.3.4** (the maintained FTCLib fork) — command +
   subsystem model. Hosted on the Dairy Foundation, the same home as Sloth. AI-readable docs at
   `docs.seattlesolvers.com/llms.txt` (any page + `.md` returns markdown) — use them rather than
@@ -81,7 +87,8 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
 - **Navigation:** Pedro Pathing — **always run the latest version** (team decision). SolversLib's
   `pedroPathing` module is glue only and, unlike other frameworks' extensions, **does not bundle
   Pedro** — we install Pedro ourselves, so choosing the latest is the normal case, not an override.
-  SolversLib publishes a compatibility matrix (0.3.3+ targets Pedro 2.0.0 *and higher*); re-check it
+  SolversLib publishes a compatibility matrix (Pedro 3.0.0+ needs SolversLib **0.3.6** or higher);
+  re-check it
   when bumping either. Never assume what resolved — verify with `./gradlew :TeamCode:dependencies`,
   and prove pathing actually runs in Phase 0 (§13), because a mismatch surfaces at **runtime**, not
   at build. Changing this pin is WARN-AND-CONFIRM (§6).
@@ -275,10 +282,10 @@ destabilize the robot. Therefore:
     `testbot_tuning.json` into `tuning/` (via `./save-tuning.sh`) and commit it **whole. Never
     transcribe individual numbers back into source as new code defaults** — that was an earlier model,
     now replaced. The in-code static defaults stay only as a last-resort fallback.
-  - **Pedro constants** (`pedroPathing/Constants.java`): **as of 2026-09-01 these save themselves**
-    into the same per-robot JSON, so the save path is the same as every other tunable — commit the
-    file the robot wrote. Transcription into source is now only the manual fallback, using the
-    paste-ready block `TuningRecorder` writes to the RC log under `PEDRO_TUNED`.
+  - **Pedro constants** (`pedroPathing/Constants.java`): these are ORDINARY `@Configurable` statics
+    since Pedro 3 (2026-09-22), so they save and load exactly like every other dashboard tunable —
+    commit the file the robot wrote. Pedro's AutoTune also prints a paste-ready block; putting those
+    numbers in `Constants.java` sets the in-code fallback, which is worth doing once per robot.
 
 ### Two robots, one codebase — tuning ownership — NON-NEGOTIABLE
 We run a **Competition robot** and a **Test bot** off the *same commit* (never forked). The core
@@ -305,37 +312,35 @@ hub network name — see §10). Two tuning categories, handled differently *on p
   comp/test `MecanumConstants`, and comp/test `PinpointConstants`), selected by `RobotIdentity` when
   the follower is built. Both sets are committed to git, so both robots' path tuning is saved and
   reviewable.
-- **The mecanum set is split too, because the drive velocities live there.** `ForwardVelocityTuner`
-  and `LateralVelocityTuner` print `xVelocity` / `yVelocity`, and Pedro keeps those on
-  `MecanumConstants` — they are per-robot numbers. What stays **shared** is only the wiring (motor
-  names and directions, identical on both robots), built in one private helper so the two sets can
-  never drift apart. `pathConstraints` is shared as well: it says when a path is done, not how hard
-  the robot drives.
-- An **UNKNOWN** hub gets a third set — untuned Pedro defaults capped at half power — and logs a
-  warning. It must still build a follower to run at all, so it cannot "load nothing" the way tuning
-  JSON does; capping power is how it fails closed. Never given comp's tuning.
-- **CHANGED 2026-09-01 — these are now saved to the per-robot JSON too, automatically.** They used
-  to be code-only, on the reasoning that they are few and rarely changed. In practice that meant a
-  tuning session lived only in RAM: turn a gain in Panels, lose power or crash the OpMode, and the
-  whole session was gone with nothing to transcribe from. That is exactly how the test bot's PIDF
-  tuning was lost on 2026-09-01. So now:
-  - `PedroTuningStore` flattens the tuned values (PIDF gains, centripetal scaling, mass, zero-power
-    accelerations, drive velocities, pod offsets) into plain `Pedro.*` double keys in the SAME
-    per-robot file as every other tunable. One file per robot holds all of that robot's tuning.
-  - **Saving is automatic.** Panels has no change hook, so `TuningRecorder` polls each loop in the
-    Tuning suite and, about a second after a value settles, queues a save. A daemon thread does the
-    write — never the loop thread.
-  - **Loading happens inside `Constants.createFollower`**, before it builds anything, so the load
-    can never run after the follower captured the constants. It is all-or-nothing: a missing,
-    unparseable, or out-of-range value rejects the whole Pedro block and the robot runs on the
-    in-code defaults, loudly. UNKNOWN loads nothing, as always.
-  - **The in-code constant sets are now last-resort fallbacks**, exactly like the other tunables.
-    The committed per-robot JSON is canonical. Save by committing the file, not by transcribing.
-  - `TuningConfig.pedroTuningLoadEnabled` turns the load off, to answer "is it the file or the code?"
-  - `pathConstraints` stays shared and stays in code — it is not per-robot tuning.
-  - After the follower is built, the values are read back OUT of it and logged. A value that
-    persists but never reaches the follower looks perfectly tuned everywhere else; this is the only
-    check that catches that, and it is a real failure we found in another team's codebase.
+- **What stays shared** is only the wiring — motor names and directions, identical on both robots
+  (§10) — built in one helper so the two robots cannot drift apart.
+- An **UNKNOWN** hub gets its own untuned values, always capped at `Constants.fallbackMaxPower`, and
+  logs a warning. It must still build a follower to run at all, so it cannot "load nothing" the way
+  tuning JSON does; capping power is how it fails closed. Never given comp's tuning.
+- **CHANGED 2026-09-22 with Pedro 3 — the bespoke Pedro tuning store is GONE.** Pedro 2 kept its
+  tuning inside nested library objects that reflection could not walk, so we carried
+  `PedroTuningStore` and `TuningRecorder` to flatten them into `Pedro.*` keys. Pedro 3 builds its
+  config from a lambda, so our values are now **plain `public static double` fields on `Constants`**
+  and everything special disappeared:
+  - `Constants` is in `Persistence.TUNING_CLASSES` and saves and loads like any other tunable. One
+    file per robot still holds all of that robot's tuning. The committed per-robot JSON is still
+    canonical; the numbers in `Constants.java` are fallback defaults.
+  - **Feedback gains stay live.** They reach Pedro as `Controller` *suppliers*, so the controller
+    asks `Constants` for the number every time it runs — turn a gain in Panels and the robot changes
+    on the next loop.
+  - **Everything else needs a re-init**: velocities, decelerations, brake coefficients, pod offsets
+    and max power are read once when the follower is built. The class comment says which is which.
+  - **Neither robot is tuned for Pedro 3 yet.** Foresight brakes using coefficients that only
+    AutoTune can measure, and the ones in `Constants.java` are placeholders — a robot will follow a
+    path badly until its own AutoTune numbers are in there. An **UNKNOWN** hub is still capped at
+    `Constants.fallbackMaxPower`; the two known robots are not.
+  - After the follower is built, the values are read back out and logged. A value that persists but
+    never reaches the follower looks perfectly tuned everywhere else; this is the only check that
+    catches that.
+- **Tuning is now AutoTune**, a web page the robot serves whenever the RC app is running — there is
+  no tuning OpMode any more. `pedroPathing/Tuning.java` lists which procedures appear on it;
+  `pedroPathing/procedures/` holds them, copied unchanged from the Pedro Quickstart. Each one prints
+  a paste-ready block: put its numbers in `Constants.java` for the robot you tuned, and commit.
 
 ### Two robots, one codebase — optional mechanisms — NON-NEGOTIABLE
 The two robots also diverge on **which mechanisms exist at all**, not just tuning. Mechanical build

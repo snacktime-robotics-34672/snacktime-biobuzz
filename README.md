@@ -47,7 +47,6 @@ teamcode/
 │                Persistence.java         Per-robot tuning + snapshot, git hash, robot-aware/fail-closed (§7)
 │                LogCleanup.java          Deletes matchlogs/CSVs >14 days; protects our JSONs (§14)
 │                Datalogger.java          Buffered CSV time-series for debugging (§14)
-│                StandYourGround.java     Braces on the spot when the driver releases the sticks (§3/§5)
 │                AllianceMirror.java      Author autos for blue; derive red. Set seasonSymmetry at kickoff (§9)
 │                ServoUtil, JoystickCurve, SlewRateLimiter, HeadingCorrector, Profiler, StaleWatcher, TelemetryMenu
 │                profile/                 AsymmetricMotionProfile (+ Constraints, State) — accel≠decel profile
@@ -61,7 +60,7 @@ teamcode/
 test/logic/      Off-robot unit tests (`./gradlew :TeamCode:test`) for the pure logic (§9):
                  JoystickCurveTest, SlewRateLimiterTest, StaleWatcherTest,
                  AsymmetricMotionProfileTest, ServoUtilTest, PersistenceFileNamingTest,
-                 PersistenceApplyFieldTest, StandYourGroundTest, DriveToPoseTest,
+                 PersistenceApplyFieldTest, DriveToPoseTest,
                  AllianceMirrorTest          — 73 tests
 ```
 

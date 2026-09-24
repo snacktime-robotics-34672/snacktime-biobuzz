@@ -11,11 +11,20 @@ buildscript {
         maven { url "https://repo.dairy.foundation/releases" }
     }
     dependencies {
-        // Note for FTC Teams: Do not modify this yourself.
-        //noinspection AndroidGradlePluginVersion
-        classpath 'com.android.tools.build:gradle:8.7.0'
-        classpath "dev.frozenmilk:Load:0.2.4"
+        // OURS, not the SDK's: Sloth's Gradle plugin, which builds the hot-reloadable teamcode
+        // (CLAUDE.md §6 Tier 2). TeamCode/build.gradle applies it. The Android plugin itself moved
+        // to the plugins block below in SDK 12, but Sloth still comes in through buildscript.
+        // KEEP THIS VERSION EQUAL TO the Sloth runtime in TeamCode/build.gradle. The plugin builds
+        // the artifact the runtime loads; a mismatch is not a build error, it is a hot reload that
+        // quietly stops working.
+        classpath "dev.frozenmilk:Load:0.3.2"
     }
+}
+
+plugins {
+    // Note for FTC Teams: Do not modify this yourself.
+    id 'com.android.application' version '8.13.2' apply false
+    id 'com.android.library' version '8.13.2' apply false
 }
 
 // This is now required because aapt2 has to be downloaded from the
