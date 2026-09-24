@@ -20,6 +20,14 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **Brought `STATUS.md` up to date — it was describing a robot that no longer exists.** It still
+  said the stack was SDK 11 with Pedro 2 and FTC Dashboard installed, and still claimed the
+  migration had never run on a robot. It now leads with tonight's two startup bugs and their fixes,
+  carries a corrected "what's actually installed" table (checked against the resolved dependency
+  tree, not from memory), lists the four things now at the top of the open-work pile, and tells the
+  next session how to deploy, why logcat looks empty at startup, and where to read the hub's ANR
+  trace. Test count corrected to the counted 111 - the 133 and 142 in older entries were both
+  wrong. (STATUS.md)
 - **Live tuning confirmed working after the dashboard change.** `CLAUDE.md` §2 says to re-check the
   canary after any Panels or Sloth change, and removing FTC Dashboard counted. Aaron ran
   `PanelsProbe` on the competition robot and the value reached the robot, so Tier 1 tuning is intact
