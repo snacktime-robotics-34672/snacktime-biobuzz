@@ -20,6 +20,19 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **A full install now fixes itself up afterwards, so nobody has to remember two easy-to-forget
+  steps.** Installing used to leave the robot in a state that looks fine and is not: Android
+  installs an app as "interpret-only" so the Robot Controller runs slowly enough that the hub
+  watchdog can kill it during startup, AND a full install deletes the staged Sloth teamcode, so the
+  Driver Station shows no OpModes with nothing in the logs that looks like an error. Both now happen
+  automatically: `installDebug` is followed by `aotCompileRc` (compiles the app so startup is fast)
+  and then `deploySloth` (pushes the teamcode back). Neither step fails the build when no robot is
+  plugged in - they say so and move on. (TeamCode/build.gradle)
+- **Restored the Pedro tuning procedures, so AutoTune has something to run.** `Tuning.java` and the
+  four files in `pedroPathing/procedures/` came back. With FTC Dashboard gone there are few enough
+  classes that Pedro's scanner finishes in under a millisecond instead of hanging for 15 seconds.
+  Checked on the comp robot: the app stays up, no crashes, no relaunches, and a hot reload
+  registered all six OpModes in the running app in under a second. (pedroPathing/)
 - **THE ROBOT BOOTS. Removed FTC Dashboard, because it and Panels were fighting over the
   Limelight ports.** The Robot Controller app had been dying about 30 seconds after every start
   with `java.net.BindException: Address already in use`, so the Driver Station never held a usable

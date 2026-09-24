@@ -112,6 +112,52 @@ task generateBuildManifest {
 
 preBuild.dependsOn generateBuildManifest
 
+// ---------------------------------------------------------------------------------------------
+// AFTER A FULL INSTALL, DO TWO THINGS AUTOMATICALLY.
+//
+// Both were found the hard way on 2026-09-23 and both are easy to forget, so they are chained
+// onto installDebug instead of left to a human (CLAUDE.md §6):
+//
+//   1. AOT-compile the app. Android installs an APK as `interpret-only`, so the Robot Controller
+//      runs interpreted. Sloth's boot scan then took about 39 seconds instead of about 7, which is
+//      slow enough that the hub watchdog can kill the app before it finishes starting. One
+//      `compile -m speed` builds the AOT image and the scan gets fast again. A normal install
+//      resets this, which is why it belongs here and not in a one-off script.
+//
+//   2. Push the teamcode again. A full install DELETES the staged Sloth bundle - Sloth sees the
+//      app is newer than the bundle and drops it. Until the teamcode is pushed again the Driver
+//      Station shows NO OpModes at all, with nothing in the logs that looks like an error.
+//
+// Neither step fails the build if the robot is not plugged in: they log and move on, because a
+// build with no device attached is a normal thing to do.
+// ---------------------------------------------------------------------------------------------
+def rcPackage = 'com.qualcomm.ftcrobotcontroller'
+
+tasks.register('aotCompileRc', Exec) {
+    group = 'install'
+    description = 'AOT-compiles the Robot Controller app so its boot scan is fast again.'
+    commandLine new File(android.sdkDirectory, 'platform-tools/adb').absolutePath,
+            'shell', 'cmd', 'package', 'compile', '-m', 'speed', '-f', rcPackage
+    ignoreExitValue = true
+    doLast {
+        if (executionResult.get().exitValue == 0) {
+            logger.lifecycle("aotCompileRc: Robot Controller AOT-compiled (fast boot scan).")
+        } else {
+            logger.lifecycle("aotCompileRc: SKIPPED - no robot reachable over adb. " +
+                    "If the robot boots slowly, run this task with the hub connected.")
+        }
+    }
+}
+
+// installDebug is created by the Android plugin, so it only exists after evaluation.
+afterEvaluate {
+    tasks.matching { it.name == 'installDebug' }.configureEach {
+        finalizedBy 'aotCompileRc', 'deploySloth'
+    }
+    // AOT first, then push the teamcode onto the running app.
+    tasks.named('deploySloth') { mustRunAfter 'aotCompileRc' }
+}
+
 repositories {
     maven {
         url = 'https://maven.brott.dev/'
