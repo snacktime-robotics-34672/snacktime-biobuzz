@@ -20,6 +20,14 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **Wrote down the tuning trap that eats your work with no warning.** The robot only saves tuning
+  while an OpMode is RUNNING - `pollAutosave` lives inside the OpMode loop. Turn a knob in Panels
+  with nothing running and the value really does change in memory, the dashboard looks right, and
+  no error appears anywhere; but nothing is written, and the next OpMode init reloads the file
+  straight over it. It ate two toggle changes on the competition robot today before anyone noticed.
+  §6's tuning discipline now leads with the order that works - **start the OpMode, then turn the
+  knob, then wait about a second** - and the team guide says the same in its Panels section.
+  (CLAUDE.md §6)
 - **The competition robot's tuning is in git again, and it is the Pedro 3 file this time.** The
   committed copy had gone stale: 26 of its 73 keys pointed at fields that no longer exist - the
   whole Pedro 2 `Pedro.*` block, plus `holdEntryDelayMs`, `holdUseScaling` and

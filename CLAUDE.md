@@ -317,6 +317,14 @@ destabilize the robot. Therefore:
   and why.
 
 ### Tuning discipline
+- **AN OPMODE MUST BE RUNNING WHEN YOU TURN A KNOB, or the change is thrown away.** `Persistence`
+  writes tuning from `pollAutosave`, and that only runs inside a running OpMode. Change a value in
+  Panels with nothing running and the static *does* change in memory — the dashboard looks right,
+  and nothing reports an error — but no file is written, and the next OpMode init calls
+  `loadAndApplyTuning`, which reads the file straight back over your edit. The work is simply gone.
+  So the order is: **start the OpMode first, then turn the knob, then wait about a second** and the
+  hub has it. Cost us two toggles on 2026-09-23. If you must set a value with nothing running, edit
+  the robot's tuning JSON on the hub instead — the file is what init believes.
 - **One change at a time.** Change a single configurable, observe, record the result, then move
   on. Never chase two variables at once.
 - **Make dialed-in values durable — but the right way per category** (see "Two robots, one
