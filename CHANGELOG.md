@@ -20,6 +20,11 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **New "34672 Panels Canary" OpMode, because the canary could not actually be checked.**
+  `CLAUDE.md` §2 says to prove live tuning still works after any Panels or Sloth bump by typing into
+  `PanelsProbe.probe` and watching a telemetry line follow it. That line did not exist anywhere in
+  the code, and never had — so the check everyone believed in was unperformable. Now it is an OpMode:
+  run it, type a number in Panels, watch the CANARY line match. (opmodes/PanelsCanary)
 - **Moved to FTC SDK 12.0, the 2026-27 season release.** Merged FIRST's `FtcRobotController` 12.0
   into the repo and bumped all eight SDK libraries from 11.1.0. Builds clean and all 142 tests pass;
   nothing has run on a robot yet.

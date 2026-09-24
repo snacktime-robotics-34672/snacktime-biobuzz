@@ -52,7 +52,7 @@ public class Intake extends SubsystemBase {
      * often as a too-slow one fails to grab them. Negative runs BOTH motors the other way, which
      * ejects; it is also the quick fix if the whole intake turns out to be wired backwards.
      */
-    public static double intakePower = 0.8;
+    public static double intakePower = 0.9;
 
     /**
      * Does the right motor run opposite the left one? True for a normal counter-rotating intake,
