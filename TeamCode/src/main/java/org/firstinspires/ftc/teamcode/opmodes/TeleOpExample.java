@@ -15,7 +15,6 @@ import com.seattlesolvers.solverslib.command.button.Trigger;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 import java.util.Locale;
 
@@ -59,11 +58,10 @@ public class TeleOpExample extends CommandOpMode {
     private Follower follower;
     private double startBatteryVolts = 0.0;
     private RobotIdentity robotId;
-    // Built once at init; reused each loop (§4 rule 8, no per-loop alloc). idBanner (plain) goes to
-    // Panels, which has no HTML display-format concept; idBannerHtml (larger/bold/colored) goes to
-    // the Driver Station, which does.
+    // Built once at init; reused each loop (§4 rule 8, no per-loop alloc). Plain text, because its
+    // only destination now is Panels — the Driver Hub banner was removed on 2026-09-23. The HTML
+    // variant (RobotIdentity.bannerHtml) is still used by AutonomousExample and VisionCalibration.
     private String idBanner;
-    private String idBannerHtml;
 
     @Override
     public void initialize() {
@@ -75,11 +73,8 @@ public class TeleOpExample extends CommandOpMode {
         // Which robot is this? Read once, from the hub network name (see RobotIdentity).
         robotId = RobotIdentity.resolve();
         idBanner = robotId.banner();
-        idBannerHtml = robotId.bannerHtml();
-        // Enables the "subset of HTML tags" idBannerHtml relies on for larger/colored text. Affects
-        // the whole Driver Station panel, not just this line — other lines have no tags, so they
-        // render unchanged.
-        telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
+        // No setDisplayFormat here any more: nothing this OpMode sends to the Driver Hub contains
+        // HTML tags now that the identity banner has moved to Panels.
 
         Persistence.loadAndApplyTuning(robotId, telemetry);
         LogCleanup.maybeRun(telemetry); // fires once every 14 days, silent otherwise
@@ -221,16 +216,18 @@ public class TeleOpExample extends CommandOpMode {
         // Robot identity banner FIRST, so "which robot am I on?" is always the top line — larger/
         // colored on the Driver Hub (HTML), plain text mirrored to Panels. Pre-built strings, so no
         // per-loop allocation (§4 rule 8).
-        telemetry.addLine(idBannerHtml);
         panels.debug(idBanner);
-        // Current mode, which §8 asks for on the Driver Hub — a driver needs to know at a glance
-        // whether the robot is braced or free, because the two feel very different on the sticks.
-        // Constant strings, so no per-loop allocation (§4 rule 8).
-        telemetry.addData("Drive", driveModeLabel(follower));
-        // Intake state is on §8's Driver Hub list. Constant strings, so no per-loop allocation.
-        telemetry.addData("Intake", intake.isRunning() ? "ON" : "off");
+        // THE DRIVER HUB SHOWS THESE FOUR LINES AND NOTHING ELSE. Cut to this set by Aaron on
+        // 2026-09-23. Everything that used to sit here still exists — it moved to Panels, which is
+        // where §4 rule 6 says heavy data belongs — EXCEPT the three noted below, which are gone
+        // from the Driver Hub on purpose:
+        //   - the robot identity banner. Still on Panels (panels.debug above) and in every
+        //     snapshot, so you can always tell which robot produced a run — but a DRIVER can no
+        //     longer see comp-vs-test at a glance (§10). Know that before a match.
+        //   - drive mode and intake state, which §8 lists as Driver Hub items.
+        //   - "Worst ms". §4 rule 7 asks for ms AND Hz; only Hz is here now. Loop time is still
+        //     measured every loop, so nothing stopped watching — only the readout is shorter.
         telemetry.addData("Loop Hz", loopTimer.getHz());
-        telemetry.addData("Worst ms", loopTimer.getMaxLoopMs());
         telemetry.addData("X in", follower.pose().x());
         telemetry.addData("Y in", follower.pose().y());
         telemetry.addData("Heading °", Math.toDegrees(follower.pose().heading()));
@@ -242,6 +239,10 @@ public class TeleOpExample extends CommandOpMode {
         // Off in Panels (Drivetrain.currentMonitorEnabled) removes both the readouts and the four
         // hub round-trips behind them — which are not free, so watch Loop Hz above after turning it
         // on. Drivetrain.getAmpReadMs() times those reads if you want the cost itemised.
+        //
+        // These go to PANELS ONLY now, not the Driver Hub. §5 still requires per-wheel drive
+        // telemetry and this is still it — §4 rule 6 just wants it on the dev dashboard rather than
+        // in front of a driver mid-match.
         if (Drivetrain.currentMonitorEnabled) {
             addAmps("LF A", drivetrain.getLfAmps());
             addAmps("LR A", drivetrain.getLrAmps());
@@ -282,15 +283,6 @@ public class TeleOpExample extends CommandOpMode {
         panelsField.line(pose.x() + dx, pose.y() + dy);
     }
 
-    /**
-     * Driver-facing name for the drive mode. Constant strings, so no per-loop allocation (§4 rule 8).
-     * A driver needs this at a glance: the three modes feel completely different on the sticks.
-     */
-    private static String driveModeLabel(Follower follower) {
-        if (follower.holding()) return "HOLDING (braced)";
-        if (follower.following()) return "AUTO (driving to a spot)";
-        return "manual";
-    }
 
     /**
      * Sends one amp reading to both displays, to two decimals.
@@ -302,9 +294,8 @@ public class TeleOpExample extends CommandOpMode {
      * string to both displays keeps it to one allocation per motor rather than two.
      */
     private void addAmps(String caption, double amps) {
-        String value = String.format(Locale.US, "%.2f", amps);
-        telemetry.addData(caption, value);
-        panels.addData(caption, value);
+        // Panels only — the Driver Hub set is the four lines in the telemetry block above.
+        panels.addData(caption, String.format(Locale.US, "%.2f", amps));
     }
 
     /** Returns 0 if |value| is within the deadzone, otherwise passes value through unchanged. */

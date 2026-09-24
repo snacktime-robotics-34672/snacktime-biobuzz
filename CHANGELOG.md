@@ -20,6 +20,16 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **The TeleOp Driver Hub now shows four lines and nothing else:** Loop Hz, X in, Y in, Heading.
+  Asked for by Aaron to cut clutter in front of a driver. Nothing was thrown away that mattered -
+  the per-wheel drive currents moved to Panels, where §4 rule 6 says heavy data belongs, and §5
+  still gets its per-wheel telemetry. **Three things did leave the Driver Hub on purpose, and they
+  are worth knowing:** the robot identity banner (still on Panels and in every snapshot, but a
+  DRIVER can no longer tell the comp robot from the test bot at a glance); drive mode and intake
+  state, which §8 lists as Driver Hub items; and "Worst ms", so only Hz is shown where §4 rule 7
+  asks for ms and Hz. Loop time is still measured every loop - only the readout got shorter. All
+  three are written into the code beside the telemetry block so nobody restores them by accident.
+  (opmodes/TeleOpExample)
 - **The Launcher bench test now spins the left-rear wheel as well as the front-left.** Same button
   (hold X), same power, from the same number - one value feeds both motors, so they cannot drift
   apart. Both are checked at init and the OpMode refuses to start if either is missing, because
