@@ -152,6 +152,25 @@ one-command rollback target is easy to find later.
   TeamCode/build.gradle, CLAUDE.md §2)
 
 ## 2026-09-22
+- **New "34672 Pollen Auto" OpMode — the five-segment route from the Pedro Pathing Visualizer.** The
+  robot drives out to the pollen, then runs four reversed segments up the field. The pose numbers are
+  exactly the ones drawn in the visualizer; nothing was re-aimed by hand. (`opmodes/PollenAuto.java`)
+- **It drives the shape and scores nothing, on purpose.** The visualizer export contains no mechanism
+  actions, so the intake never runs. The two places a mechanism command belongs are marked in the
+  file, with the exact lines to add once the intake is on the robot that runs this.
+- **Ported to Pedro 3, so it uses the export's own path API.** The first draft was written for Pedro 2
+  and stopped compiling when master moved to Pedro 3.0.1. Pedro 3 is what the visualizer exports, so
+  the paths now read almost line for line like the export (`Paths.line`, `Paths.curve`, `.linear`,
+  `.reverseTangent`). What still differs from the export: our scheduler, our per-segment timeouts, our
+  bulk-cache and loop-time rules, and the alliance menu, so the poses are written once for blue and red
+  is derived.
+- **One live knob: segment timeout.** The per-path power cap is gone, because Pedro 3 has no per-path
+  cap. For a slow first run, turn `Constants.compMaxPower` / `testMaxPower` down in Panels **before
+  INIT**. The follower reads it once, when it is built.
+- **Known before anyone runs it:** Foresight is untuned on BOTH robots until AutoTune runs on each, so
+  this will follow loosely for now. Segments 2-5 drive backwards. And the poses must be the BLUE ones;
+  if they were drawn on red, every segment lands in the wrong quarter of the field.
+- **This one needs a full install, not a hot reload** — it is a new OpMode registration (§6 Tier 3).
 - **Moved to Pedro Pathing 3.0.1.** Pedro 3 is a rewrite, not an update: a new path-following
   algorithm (Foresight), a new way to build paths, and a validated config system. Every file that
   touched Pedro changed. Confirmed by Aaron before any dependency moved (§6).
