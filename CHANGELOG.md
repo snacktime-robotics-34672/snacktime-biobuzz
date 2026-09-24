@@ -28,6 +28,11 @@ one-command rollback target is easy to find later.
   automatically: `installDebug` is followed by `aotCompileRc` (compiles the app so startup is fast)
   and then `deploySloth` (pushes the teamcode back). Neither step fails the build when no robot is
   plugged in - they say so and move on. (TeamCode/build.gradle)
+- **Added a "fullInstall" run configuration in Android Studio, and it is the one to use.** Android
+  Studio's green Run button installs the APK itself and skips Gradle, so it would miss the two
+  follow-up steps above. Picking `fullInstall` from the run dropdown goes through Gradle and gets
+  them. There are now two configurations: `deploySloth` for everyday code changes (sub-second) and
+  `fullInstall` when you change a library or an OpMode name. (.idea/runConfigurations)
 - **Restored the Pedro tuning procedures, so AutoTune has something to run.** `Tuning.java` and the
   four files in `pedroPathing/procedures/` came back. With FTC Dashboard gone there are few enough
   classes that Pedro's scanner finishes in under a millisecond instead of hanging for 15 seconds.

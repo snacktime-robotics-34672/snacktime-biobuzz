@@ -1,0 +1,30 @@
+<component name="ProjectRunConfigurationManager">
+  <!-- Full install (Tier 3) that also fixes the robot up afterwards.
+       Use THIS, not the green Run button on the TeamCode app configuration.
+       Android Studio's own Run installs the APK directly and skips Gradle's
+       installDebug, so it misses the two follow-up steps this one chains on:
+       aotCompileRc (stop the app running interpreted) and deploySloth (put the
+       teamcode back, which a full install deletes). See TeamCode/build.gradle. -->
+  <configuration default="false" name="fullInstall" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="executionName" />
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="externalSystemIdString" value="GRADLE" />
+      <option name="scriptParameters" value="" />
+      <option name="taskDescriptions">
+        <list />
+      </option>
+      <option name="taskNames">
+        <list>
+          <option value=":TeamCode:installDebug" />
+        </list>
+      </option>
+      <option name="vmOptions" />
+    </ExternalSystemSettings>
+    <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+    <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+    <DebugAllEnabled>false</DebugAllEnabled>
+    <RunAsTest>false</RunAsTest>
+    <method v="2" />
+  </configuration>
+</component>
