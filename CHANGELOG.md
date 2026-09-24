@@ -20,6 +20,13 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **§6 now says how to deploy, and warns off removing OnBot Java.** Tier 3 records that a full
+  install repairs itself now - it compiles the app so startup is fast, then pushes the teamcode back
+  - and that you must pick the `fullInstall` run configuration rather than the green Run button,
+  because Run skips Gradle and therefore skips both. Tier 2 gains a rule not to remove the
+  `OnBotJava` dependency: **Sloth loads our teamcode through it**, so dropping it would kill hot
+  reload, and an OnBot Java message on the Driver Station is Sloth working, not a fault.
+  (CLAUDE.md §6)
 - **Brought the charter back in line with what the robot actually runs.** `CLAUDE.md` still told you
   to install FTC Dashboard and to tag tunables with its `@Config`, both of which stopped being true
   when the dashboard came out of the stack earlier today - following §6 as written would not have

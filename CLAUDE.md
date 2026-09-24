@@ -253,6 +253,15 @@ and power cycles. **This is the default deploy for code changes.**
 
 - **Rule:** all code we write lives in `org.firstinspires.ftc.teamcode` (or a subpackage), or
   Sloth will not hot-reload it.
+- **Do NOT remove the `OnBotJava` dependency, however unused it looks.** Sloth loads our teamcode
+  *through* OnBotJava: it uses `OnBotJavaClassLoader`, `OnBotJavaHelperImpl`, `OnBotJavaManager` and
+  `ExternalLibraries`, and you can watch it happen in logcat as
+  `OnBotLoadEventHandler: Handling staging of load event` on every push. Dropping OnBotJava would
+  kill Tier 2 entirely. FIRST's own `FtcRobotControllerActivity` imports it too, so removing it does
+  not even compile without patching stock SDK code we re-merge every season. **If you see an
+  OnBot Java message on the Driver Station, that is normal** — it is Sloth's hot reload announcing
+  itself through OnBotJava's notification channel, not a fault, and not a sign that anyone is using
+  the on-robot editor.
 
 ### Tier 3 — Full install (~40s+, avoid when possible)
 A full install is required only when you:
@@ -263,6 +272,24 @@ A full install is required only when you:
 - change OpMode registration (name, class name, or enabled status).
 
 Keep this list rare by keeping all logic in teamcode and all tunables as configurables.
+
+**Use the `fullInstall` run configuration, NOT the green Run button.** Android Studio's Run button
+installs the APK itself and never calls Gradle, so it skips the two clean-up steps below. Pick
+`fullInstall` from the run dropdown instead (it runs `:TeamCode:installDebug`). The other
+configuration, `deploySloth`, is the everyday Tier 2 deploy.
+
+**A full install leaves two problems behind, so `installDebug` now fixes both itself** (added
+2026-09-23; `TeamCode/build.gradle`). Neither is obvious, and both look like the robot is fine:
+
+1. **The app is installed "interpret-only"** — Android does not compile it ahead of time, so the
+   Robot Controller runs interpreted. That stretched Sloth's boot scan from about 7 seconds to about
+   39, which is slow enough for the hub watchdog to kill the app before it finishes starting. The
+   `aotCompileRc` task compiles it. A later install resets this, which is why it is automatic.
+2. **The staged Sloth teamcode is deleted** — Sloth sees the app is newer than the bundle and drops
+   it. Until the teamcode is pushed again the Driver Station shows **no OpModes at all**, and
+   nothing in the logs looks like an error. `deploySloth` runs straight after.
+
+Neither step fails the build when no robot is attached; they say so and move on.
 
 ### What the AI must do here
 - Prefer a **configurable** over a literal. Prefer a **teamcode-local** change over editing a
