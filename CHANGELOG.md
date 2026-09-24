@@ -20,6 +20,11 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **`WORKFLOW.md` now says which button to press.** The run configurations ship with the repo, so
+  everyone gets `deploySloth` and `fullInstall` in the Android Studio dropdown after a sync. Added a
+  short table for which to pick, a warning not to use the green Run arrow (it skips Gradle, so the
+  teamcode is deleted from the robot and the Driver Station goes empty), and the one-line fix when
+  the OpMode list is empty: run `deploySloth`, never a full install. (WORKFLOW.md)
 - **§6 now says how to deploy, and warns off removing OnBot Java.** Tier 3 records that a full
   install repairs itself now - it compiles the app so startup is fast, then pushes the teamcode back
   - and that you must pick the `fullInstall` run configuration rather than the green Run button,

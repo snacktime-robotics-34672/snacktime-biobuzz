@@ -105,6 +105,26 @@ Use the cheapest tier that does the job (`CLAUDE.md` §6):
 - **Changing a dependency / library** → **STOP. Warn and confirm** with a human, then full install
   (`CLAUDE.md` §6, NON-NEGOTIABLE).
 
+### Which button to press
+
+Two run configurations come with the repo. They appear in Android Studio's run dropdown after you
+sync — you do not create them.
+
+| You are | Pick | What it does |
+|---------|------|--------------|
+| changing teamcode (the normal case) | **`deploySloth`** | Pushes the teamcode only. Sub-second. |
+| changing a library, or an OpMode's name | **`fullInstall`** | Installs the whole app, then repairs the two things that breaks. |
+
+**Do not use the green Run arrow on the `TeamCode` configuration.** It installs the app through
+Android Studio instead of Gradle, which skips both repair steps: the app is left uncompiled (slow
+to start, and the hub watchdog can kill it), and **the teamcode is deleted from the robot**, so the
+Driver Station shows no OpModes at all with nothing that looks like an error. `fullInstall` is the
+same install with those two steps chained on. It cost us an evening on 2026-09-23 — see
+`CLAUDE.md` §6 Tier 3.
+
+If the Driver Station ever shows no OpModes, run **`deploySloth`**. Do not reach for a full
+install: that deletes the teamcode again and puts you back where you started.
+
 ---
 
 ## 6. Testing & verification
