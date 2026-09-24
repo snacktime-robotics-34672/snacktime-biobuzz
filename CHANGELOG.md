@@ -20,6 +20,15 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-23
+- **The Launcher bench test now spins the left-rear wheel as well as the front-left.** Same button
+  (hold X), same power, from the same number - one value feeds both motors, so they cannot drift
+  apart. Both are checked at init and the OpMode refuses to start if either is missing, because
+  running one of a pair is worse than running neither. Both coast on release and both stop when the
+  OpMode ends. Telemetry now shows a velocity per motor: with two wheels the useful check is that
+  they MATCH, since the same power giving very different speeds means one is loaded, geared or
+  wired differently. **Read the warning first - this spins TWO DRIVE motors on the same side of the
+  robot, so on the ground it does not just move, it drives hard to one side. Put it on blocks.**
+  (opmodes/Launcher)
 - **Wrote down the tuning trap that eats your work with no warning.** The robot only saves tuning
   while an OpMode is RUNNING - `pollAutosave` lives inside the OpMode loop. Turn a knob in Panels
   with nothing running and the value really does change in memory, the dashboard looks right, and
