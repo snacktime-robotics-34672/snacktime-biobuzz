@@ -11,7 +11,7 @@ every change it makes, so undo and rollback stay easy.
 open the pull request that gets your work onto `master`.
 
 ## Stack
-**Java** · FTC SDK (Control Hub) · **SolversLib** (commands/subsystems; maintained FTCLib fork) ·
+**Java** · FTC SDK (Control Hub) · **Ivy** (Pedro's command scheduler) · **SolversLib** (motors, PIDF, gamepad; maintained FTCLib fork) ·
 **Pedro Pathing** (navigation, always latest) · **Limelight 3A** (perception coprocessor) ·
 **Panels** (dashboard — the **Sloth fork**, see CLAUDE.md §2) · **Sloth** (sub-second hot reload).
 
