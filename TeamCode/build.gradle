@@ -180,7 +180,8 @@ dependencies {
     implementation project(':FtcRobotController')
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
 
-    // SolversLib: Latest Stable Version
+    // SolversLib: Latest Stable Version. Since 2026-09-24 we use it for hardware and control only
+    // (MotorEx, PIDFController, GamepadEx). Commands and the scheduler are Ivy - see below.
 
     // 0.3.6 satisfies both moves at once: it is the Pedro 3 line (its pedroPathing module depends
     // on com.pedropathing:revhub), and it carries no FTC SDK pin, so it resolves against SDK 12.
@@ -222,6 +223,17 @@ dependencies {
     // (same SHA-1), so there is no version to fall back to. Removing it costs us AutoTune, which
     // means Pedro path tuning has no procedure to run - see CHANGELOG 2026-09-23.
     implementation 'com.pedropathing:tuning:1.0.0'
+
+    // Ivy - Pedro's command scheduler. It REPLACED SolversLib's command system on 2026-09-24
+    // (confirmed by the team, CLAUDE.md §6). SolversLib stays for MotorEx, PIDFController and
+    // GamepadEx; nothing of ours uses its command package any more.
+    // The group moved: com.pedropathing:ivy stopped at 1.0.0, which was built against Pedro 2 and
+    // crashes on Pedro 3 (it calls follower.followPath and com.pedropathing.util.Timer, both gone).
+    // 1.1.x publishes as com.pedropathing.ivy:core + :pedro and is built against Pedro 3.0.0.
+    // core has no dependencies at all; pedro depends only on core.
+    // WATCH STARTUP after touching these: more classes means a longer Sloth boot scan (§2).
+    implementation 'com.pedropathing.ivy:core:1.1.1'
+    implementation 'com.pedropathing.ivy:pedro:1.1.1'
 
     // Panels Dashboard (Sloth fork). Version reads <sloth build>+<panels version>, same scheme as
     // the dashboard line above. MUST stay the Sloth fork: stock Panels finds tunables by scanning

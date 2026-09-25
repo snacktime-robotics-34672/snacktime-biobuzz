@@ -9,9 +9,6 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.ManualDrive;
 import com.pedropathing.math.Pose;
-import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.CommandScheduler;
-import com.seattlesolvers.solverslib.command.button.Trigger;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -21,6 +18,8 @@ import java.util.Locale;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.commands.IntakeCommand;
+import org.firstinspires.ftc.teamcode.framework.IvyOpMode;
+import org.firstinspires.ftc.teamcode.framework.Trigger;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.util.JoystickCurve;
@@ -39,7 +38,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * Driver Hub telemetry is minimal and glanceable (CLAUDE.md sections 4, 8).
  */
 @TeleOp(name = "34672 TeleOp (example)")
-public class TeleOpExample extends CommandOpMode {
+public class TeleOpExample extends IvyOpMode {
 
     // Panels field view — built once, reused every loop (§4 rule 8, no per-loop allocation).
     // Without an explicit draw call the field graphic never moves, even though the X/Y/heading
@@ -100,8 +99,8 @@ public class TeleOpExample extends CommandOpMode {
         // NOT restart it in between. whileActiveContinuous would re-schedule the command every loop,
         // restarting its timeout forever and defeating the safety net in IntakeCommand.
         //
-        // The scheduler polls this binding inside super.run() below. No per-loop allocation: the
-        // lambda and the command are both built once, here at init (§4 rule 8).
+        // IvyOpMode polls this binding inside super.run() below (framework/Trigger). No per-loop
+        // allocation: the lambda and the command are both built once, here at init (§4 rule 8).
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)
                 > Intake.triggerThreshold)
                 .whileActiveOnce(new IntakeCommand(intake));
@@ -208,7 +207,7 @@ public class TeleOpExample extends CommandOpMode {
         //   the bench with a driver.
         // ─────────────────────────────────────────────────────────────────────────────────────
 
-        // Runs the command scheduler + every subsystem's periodic().
+        // Runs every subsystem's periodic(), the trigger bindings, then Ivy's scheduler.
         super.run();
 
         // Loop-time readout is REQUIRED (section 0 prime directive, section 4 rule 7).
@@ -324,6 +323,6 @@ public class TeleOpExample extends CommandOpMode {
         stopSnap.startingBatteryVolts = startBatteryVolts;
         stopSnap.captureLoop(loopTimer); // loop-time trend data (§0)
         Persistence.writeSnapshot(stopSnap, hardwareMap); // post-match record (section 7)
-        CommandScheduler.getInstance().reset();
+        super.reset(); // clears Ivy's scheduler, subsystems and triggers
     }
 }

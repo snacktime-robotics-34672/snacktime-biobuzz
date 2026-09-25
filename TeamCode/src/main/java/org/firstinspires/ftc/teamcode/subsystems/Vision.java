@@ -5,9 +5,9 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.seattlesolvers.solverslib.command.SubsystemBase;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.framework.Subsystem;
 import org.firstinspires.ftc.teamcode.diagnostics.DiagnosticsCenter;
 import org.firstinspires.ftc.teamcode.diagnostics.Problem;
 import org.firstinspires.ftc.teamcode.diagnostics.ProblemSeverity;
@@ -37,7 +37,7 @@ import org.firstinspires.ftc.teamcode.util.StaleWatcher;
  * knows it is blind.
  */
 @Configurable
-public class Vision extends SubsystemBase {
+public class Vision extends Subsystem {
 
     // ── Calibration. Tune these by watching VisionCalibration against a tape measure. ────────────
 
