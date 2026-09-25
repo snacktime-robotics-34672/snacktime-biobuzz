@@ -12,7 +12,7 @@ import org.firstinspires.ftc.teamcode.util.TelemetryMenu;
 
 /**
  * AutonMenu — pre-match selection UI for autonomous. Renders on the Driver Hub during init_loop
- * (or the CommandOpMode init phase) so the driver picks alliance, start pose, and pre-match delay
+ * (or the IvyOpMode init phase) so the driver picks alliance, start pose, and pre-match delay
  * WITHOUT needing a laptop connected.
  *
  * WHY: CLAUDE.md §9 says "Alliance and starting pose are chosen in exactly ONE place and passed

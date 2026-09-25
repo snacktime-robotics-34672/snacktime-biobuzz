@@ -3,16 +3,15 @@ package org.firstinspires.ftc.teamcode.opmodes;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.Command;
-import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.CommandScheduler;
-import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
-import com.seattlesolvers.solverslib.command.WaitCommand;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.groups.Groups.sequential;
+
+import com.pedropathing.ivy.Command;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 import org.firstinspires.ftc.teamcode.config.AutonFieldTweaks;
-import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.diagnostics.DiagnosticsCenter;
+import org.firstinspires.ftc.teamcode.framework.IvyOpMode;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
 import org.firstinspires.ftc.teamcode.util.LogCleanup;
@@ -28,11 +27,14 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * robot never runs from the wrong pose. No source edits between matches — the driver picks on the
  * Driver Hub before pressing START.
  *
- * PEDRO: add the follower here via SolversLib's pedroPathing module, and compose FollowPathCommand
- * instances into the tree below. Remember (§2): Pedro is installed ourselves at the latest version.
+ * PEDRO: build the follower with Constants.createFollower, and compose FollowPathCommand instances
+ * into the tree below with Ivy's sequential / parallel groups. PollenAuto is a working example.
+ *
+ * COMMAND LOGGING: turn on TuningConfig.verboseTelemetry and every one of our commands logs its
+ * start and end to the RC log (see framework/TeamCommand).
  */
 @Autonomous(name = "34672 Auto (example)")
-public class AutonomousExample extends CommandOpMode {
+public class AutonomousExample extends IvyOpMode {
 
     private final LoopTimer loopTimer = new LoopTimer();
     private BulkReads bulkReads;
@@ -72,26 +74,15 @@ public class AutonomousExample extends CommandOpMode {
         drivetrain = new Drivetrain(hardwareMap);
         menu = new AutonMenu(telemetry);
 
-        // Command lifecycle logging — free traceability of when each command started, finished, or
-        // was interrupted. Gated behind verboseTelemetry so match logs stay clean (§4 rule 8).
-        // Pattern from decode-2025 (AutonBase.java lines 55-67).
-        if (TuningConfig.verboseTelemetry) {
-            CommandScheduler.getInstance().onCommandInitialize(
-                    cmd -> RobotLog.i("Command Initialized: %s", cmd.getClass().getSimpleName()));
-            CommandScheduler.getInstance().onCommandFinish(
-                    cmd -> RobotLog.i("Command Finished: %s", cmd.getClass().getSimpleName()));
-            CommandScheduler.getInstance().onCommandInterrupt(
-                    cmd -> RobotLog.i("Command Interrupted: %s", cmd.getClass().getSimpleName()));
-        }
-
-        // Register the DiagnosticsCenter so its periodic() (expiry cleanup) runs every scheduler tick.
+        // DiagnosticsCenter is a singleton that may have been built by an earlier OpMode, so it did
+        // not register itself this time. Add it, so its periodic() (expiry cleanup) runs every loop.
         register(DiagnosticsCenter.get());
 
         // TODO: create the Pedro follower here; setStartingPose after the menu selection below.
 
         // ---- Pre-match selection loop -------------------------------------------------
         // Reads the dpad, updates the menu on the Driver Hub, waits for the driver to press START.
-        // CommandOpMode extends LinearOpMode, so isStarted()/isStopRequested() work here.
+        // IvyOpMode extends LinearOpMode, so isStarted()/isStopRequested() work here.
         while (!isStarted() && !isStopRequested()) {
             menu.loop(gamepad1);
             telemetry.addLine("Ready. Press START when set.");
@@ -118,15 +109,15 @@ public class AutonomousExample extends CommandOpMode {
         // The whole autonomous, as a composed command tree. No switch statement.
         Command routine = routine();
         if (selectedDelaySeconds > 0) {
-            routine = new SequentialCommandGroup(new WaitCommand(selectedDelaySeconds * 1000L), routine);
+            routine = sequential(waitMs(selectedDelaySeconds * 1000.0), routine);
         }
         schedule(routine);
     }
 
     private Command routine() {
-        return new SequentialCommandGroup(
+        return sequential(
                 // TODO: add Pedro FollowPathCommand instances and game mechanism commands here.
-                // e.g. new ParallelCommandGroup(new FollowPathCommand(follower, path), mechanism.grabCommand())
+                // e.g. parallel(new FollowPathCommand(follower, path), mechanism.grabCommand())
         );
     }
 
@@ -145,7 +136,7 @@ public class AutonomousExample extends CommandOpMode {
             loopTimer.reset();
         }
 
-        super.run(); // command scheduler + subsystem periodics (incl. DiagnosticsCenter)
+        super.run(); // subsystem periodics (incl. DiagnosticsCenter), triggers, then Ivy's scheduler
 
         // Loop-time readout is REQUIRED (§0 prime directive, §4 rule 7). Pass numbers, not strings (§4 rule 8).
         loopTimer.update();
@@ -169,7 +160,7 @@ public class AutonomousExample extends CommandOpMode {
         drivetrain.stop();
         Persistence.saveTuning(robotId);
         Persistence.writeSnapshot(snapshot(), hardwareMap); // post-match record (§7)
-        CommandScheduler.getInstance().reset();
+        super.reset(); // clears Ivy's scheduler, subsystems and triggers
     }
 
     private Persistence.Snapshot snapshot() {

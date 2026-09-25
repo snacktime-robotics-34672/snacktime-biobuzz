@@ -2,23 +2,22 @@ package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.groups.Groups.sequential;
+
 import com.pedropathing.api.Paths;
+import com.pedropathing.ivy.Command;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.Command;
-import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.CommandScheduler;
-import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
-import com.seattlesolvers.solverslib.command.WaitCommand;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.commands.FollowPathCommand;
 import org.firstinspires.ftc.teamcode.config.AutonFieldTweaks;
-import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.diagnostics.DiagnosticsCenter;
+import org.firstinspires.ftc.teamcode.framework.IvyOpMode;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
@@ -36,11 +35,11 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  *
  * WHERE IT CAME FROM: a visualizer export (AutoPath), written for Pedro 3. We run Pedro 3.0.1 too,
  * so the path API is the export's own: Paths.line / Paths.curve, with .linear(...) and
- * .reverseTangent() for heading. Two things changed in the port, and only two:
+ * .reverseTangent() for heading. The export also ran on Ivy, and so do we (since 2026-09-24), so
+ * the command tree uses the export's own sequential(...). Two things changed in the port:
  *
- *   1. SCHEDULER. The export ran Pedro's Ivy scheduler inside a LinearOpMode. We run ONE scheduler,
- *      SolversLib's (CLAUDE.md §2, §3), so each segment is a FollowPathCommand in a command tree.
- *      FollowPathCommand also carries the built-in timeout §5 requires; the export had none.
+ *   1. PATH COMMAND. Each segment is our FollowPathCommand, not Ivy's follow(), because ours has the
+ *      built-in timeout §5 requires and the export's had none.
  *   2. ALLIANCE. The export hardcoded its poses and its start pose. Here every pose is authored for
  *      BLUE and goes through AutonMenu.resolve(), which mirrors for red and applies this field's
  *      measured tweaks (§9). Nothing in this file is alliance-specific.
@@ -56,7 +55,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  */
 @Configurable
 @Autonomous(name = "34672 Pollen Auto")
-public class PollenAuto extends CommandOpMode {
+public class PollenAuto extends IvyOpMode {
 
     // ===================================================================================
     // TUNABLES (§6 Tier 1 — turn these in Panels, no deploy)
@@ -140,15 +139,6 @@ public class PollenAuto extends CommandOpMode {
         drivetrain = new Drivetrain(hardwareMap);
         menu = new AutonMenu(telemetry);
 
-        if (TuningConfig.verboseTelemetry) {
-            CommandScheduler.getInstance().onCommandInitialize(
-                    cmd -> RobotLog.i("Command Initialized: %s", cmd.getClass().getSimpleName()));
-            CommandScheduler.getInstance().onCommandFinish(
-                    cmd -> RobotLog.i("Command Finished: %s", cmd.getClass().getSimpleName()));
-            CommandScheduler.getInstance().onCommandInterrupt(
-                    cmd -> RobotLog.i("Command Interrupted: %s", cmd.getClass().getSimpleName()));
-        }
-
         register(DiagnosticsCenter.get());
 
         // The identity picks this robot's own Pedro tuning — comp and test drive differently (§6).
@@ -194,7 +184,7 @@ public class PollenAuto extends CommandOpMode {
 
         Command routine = routine();
         if (selectedDelaySeconds > 0) {
-            routine = new SequentialCommandGroup(new WaitCommand(selectedDelaySeconds * 1000L), routine);
+            routine = sequential(waitMs(selectedDelaySeconds * 1000.0), routine);
         }
         schedule(routine);
     }
@@ -221,7 +211,7 @@ public class PollenAuto extends CommandOpMode {
      * top-to-bottom as the plan the robot follows.
      */
     private Command routine() {
-        return new SequentialCommandGroup(
+        return sequential(
                 segment(toPollen),
 
                 // TODO(mechanism): run the intake here to actually collect the pollen. Once the
@@ -230,7 +220,7 @@ public class PollenAuto extends CommandOpMode {
                 // and drop the command in:
                 //     new IntakeCommand(intake).setTimeout(2.0)
                 // To intake WHILE driving the next segment instead of standing still, wrap the two
-                // in a ParallelCommandGroup rather than putting them in sequence.
+                // in Ivy's parallel(...) rather than putting them in sequence.
 
                 segment(toPoint2),
                 segment(toPoint3),
@@ -263,7 +253,7 @@ public class PollenAuto extends CommandOpMode {
         // checks below judge this loop's fresh pose, not last loop's.
         follower.update();
 
-        super.run(); // command scheduler + subsystem periodics (incl. DiagnosticsCenter)
+        super.run(); // subsystem periodics (incl. DiagnosticsCenter), triggers, then Ivy's scheduler
 
         loopTimer.update();
         Persistence.pollAutosave(robotId, System.nanoTime());
@@ -290,7 +280,7 @@ public class PollenAuto extends CommandOpMode {
         drivetrain.stop();
         Persistence.saveTuning(robotId);
         Persistence.writeSnapshot(snapshot(), hardwareMap); // post-match record (§7)
-        CommandScheduler.getInstance().reset();
+        super.reset(); // clears Ivy's scheduler, subsystems and triggers
     }
 
     private Persistence.Snapshot snapshot() {

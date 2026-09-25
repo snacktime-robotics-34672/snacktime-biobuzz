@@ -4,37 +4,33 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.CommandBase;
 
+import org.firstinspires.ftc.teamcode.framework.TeamCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 
 /**
- * FollowPathCommand — wraps a Pedro Path or Path as a SolversLib CommandBase so it can be
- * composed inside a command tree (SequentialCommandGroup, ParallelCommandGroup, etc.) instead of
- * hand-rolled as a state machine.
+ * FollowPathCommand — follows one Pedro Path as an Ivy command, so it can sit inside a command tree
+ * (Ivy's sequential / parallel / race groups) instead of a hand-rolled state machine. With it, autos
+ * read top-to-bottom as a plan:
  *
- * This is the missing glue between Pedro's imperative `follower.followPath(...)` API and
- * SolversLib's command-based auto structure. With it, autos read top-to-bottom as a plan:
- *
- *   schedule(new SequentialCommandGroup(
+ *   schedule(sequential(
  *       new FollowPathCommand(follower, pickupPath),
  *       intake.grabCommand(),
  *       new FollowPathCommand(follower, deliverPath),
  *       intake.releaseCommand()
  *   ));
  *
- * CREDIT: Ported from decode-2025 (common/commands/FollowPathCommand.java), which itself credits
- * Powercube from Watt-sUP 16166 — the community-standard wrapper for Pedro+SolversLib.
- * See also: https://github.com/FTC-23511/SolversLib/blob/master/examples/src/main/java/org/firstinspires/ftc/teamcode/PedroCommandSample/FollowPedroSample.java
+ * WHY NOT IVY'S OWN {@code PedroCommands.follow(follower, path)}: it has no timeout. It finishes only
+ * when {@code follower.isBusy()} goes false, so a path that never completes — a stall against a wall,
+ * a bad pose estimate, a robot wedged on another — hangs the command tree for the rest of the match.
+ * CLAUDE.md §5 does not allow that, and a safety net you have to remember to attach is one you will
+ * forget on the path that needed it. So the timeout is built in here and on by default. Use this
+ * class, not Ivy's follow(), for every path.
  *
- * WE DIVERGE FROM UPSTREAM IN ONE WAY: this command has a built-in timeout. The original finishes
- * only when {@code follower.isBusy()} goes false, so a path that never completes — a stall against a
- * wall, a bad pose estimate, a robot wedged on another — hangs the command tree for the rest of the
- * match. CLAUDE.md §5 does not allow that. SolversLib does offer {@code .withTimeout(ms)} on every
- * command, but a safety net you have to remember to attach is one you will forget on the path that
- * needed it, so it is built in here and on by default.
+ * CREDIT: first ported from decode-2025 (common/commands/FollowPathCommand.java), which credits
+ * Powercube from Watt-sUP 16166. Moved from SolversLib to Ivy on 2026-09-24.
  */
-public class FollowPathCommand extends CommandBase {
+public class FollowPathCommand extends TeamCommand {
 
     private final Follower follower;
     private final Path path;

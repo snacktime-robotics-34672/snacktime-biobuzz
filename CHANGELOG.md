@@ -19,6 +19,41 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-24
+- **Commands now run on Ivy, Pedro's own command scheduler, instead of SolversLib's.** Confirmed by
+  the team before any dependency moved (§6). Added `com.pedropathing.ivy:core:1.1.1` and
+  `com.pedropathing.ivy:pedro:1.1.1`. SolversLib stays, but only for motors (`MotorEx`), the PIDF
+  controller and gamepads; nothing uses its command package any more. Why: Pedro visualizer exports
+  are written for Ivy, and Ivy tracks Pedro releases. (TeamCode/build.gradle)
+- **Watch the name: the old `com.pedropathing:ivy` is the wrong library.** It stops at 1.0.0, which is
+  built for Pedro 2 and would crash on our Pedro 3 the first time a path or a wait ran. Ivy 1.1.x moved
+  to the group `com.pedropathing.ivy` and is built against Pedro 3.0.0. Checked from its source:
+  every Pedro class it touches exists in our 3.0.1.
+- **New `framework/` package: the four things SolversLib did that Ivy does not.** `Subsystem`
+  registers itself and runs `periodic()` every loop. `Trigger` binds a gamepad condition to a command
+  (press starts it, release cancels it). `TeamCommand` keeps the familiar initialize / execute /
+  isFinished / end methods on top of Ivy. `IvyOpMode` replaces `CommandOpMode` with the same shape
+  and the same loop order: periodic, then triggers, then commands. (framework/)
+- **Every OpMode, command and subsystem moved over; behaviour is meant to be identical.** Groups and
+  delays are Ivy's `sequential(...)` and `waitMs(...)`. The intake trigger, timeouts, subsystem
+  locking and command logging (verboseTelemetry) all work as before. The scheduler hooks that logged
+  commands are gone; `TeamCommand` logs its own start and end instead. (commands/, subsystems/,
+  opmodes/, diagnostics/)
+- **Paths still use our `FollowPathCommand`, not Ivy's `follow()`.** Ivy's has no timeout, and §5 says
+  nothing may hang the robot. When pasting a visualizer export, swap each `follow(...)` for a
+  `FollowPathCommand`. (CLAUDE.md §9)
+- **12 new off-robot tests** run the real Ivy scheduler through the same loop step the robot uses:
+  lifecycle, subsystem locking, trigger edges, loop order, clean-up between OpModes. 123 tests pass.
+  (test/.../framework/FrameworkTest)
+- **Loop-time cost, flagged (§0):** Ivy's scheduler allocates two small lists every loop. It is inside
+  the library and cannot be changed from here. Watch Loop Hz on the first robot run.
+- **This needs a full install, then a Sloth push** (new libraries, §6 Tier 3). **Test bot first, and
+  watch startup:** more classes means a longer Sloth boot scan, and §2 says that margin is thin.
+  Nothing has run on a robot yet. (CLAUDE.md §2, §3, §9)
+- **Builds on this laptop need Android Studio's JDK.** The system Java is now Oracle 26, which Gradle
+  9.1 cannot run. From a terminal, set `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jbr`
+  first; Android Studio itself already uses that JDK.
+
 ## 2026-09-23
 - **The TeleOp Driver Hub now shows four lines and nothing else:** Loop Hz, X in, Y in, Heading.
   Asked for by Aaron to cut clutter in front of a driver. Nothing was thrown away that mattered -

@@ -2,11 +2,12 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
-import com.seattlesolvers.solverslib.command.InstantCommand;
-import com.seattlesolvers.solverslib.command.SubsystemBase;
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.commands.Commands;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.framework.Subsystem;
 
 /**
  * GameMechanism — template for a game-specific mechanism (add at kickoff).
@@ -14,8 +15,9 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
  * Pattern:
  *   - Declare hardware objects here (motors, servos, sensors for this mechanism).
  *   - Expose intent-level methods (e.g. collect(), eject(), stop()).
- *   - Wrap each in an InstantCommand so TeleOp can bind it to a button
- *     and Auto can compose it into a command tree.
+ *   - Wrap each in an Ivy instant command that requires this subsystem, so TeleOp can bind it to a
+ *     button and Auto can compose it into a command tree.
+ *   - Extends our framework Subsystem, so it registers itself and periodic() runs every loop.
  *   - periodic() publishes health telemetry gated on verboseTelemetry (CLAUDE.md §4 rule 8).
  *   - Extract any math into a pure function in logic/ so it can be unit-tested off-robot (§9).
  *   - Mechanism-specific tunables are public static fields RIGHT HERE in this file (§6 Tier 1),
@@ -25,7 +27,7 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
  * Add config names to CLAUDE.md §10 hardware map once locked in.
  */
 @Configurable
-public class GameMechanism extends SubsystemBase {
+public class GameMechanism extends Subsystem {
 
     // TODO: add public static tunable fields here, e.g.:
     // public static double intakePower = 0.8;
@@ -49,9 +51,9 @@ public class GameMechanism extends SubsystemBase {
     }
 
     // Command wrappers for button bindings and command-tree composition (CLAUDE.md §3).
-    // public InstantCommand collectCommand() { return new InstantCommand(this::collect, this); }
-    // public InstantCommand ejectCommand()   { return new InstantCommand(this::eject,   this); }
-    public InstantCommand stopCommand()    { return new InstantCommand(this::stop,    this); }
+    // public Command collectCommand() { return Commands.instant(this::collect).requiring(this); }
+    // public Command ejectCommand()   { return Commands.instant(this::eject).requiring(this); }
+    public Command stopCommand()    { return Commands.instant(this::stop).requiring(this); }
 
     @Override
     public void periodic() {

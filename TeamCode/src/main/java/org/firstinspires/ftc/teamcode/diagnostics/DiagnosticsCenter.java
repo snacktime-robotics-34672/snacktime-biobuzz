@@ -3,11 +3,11 @@ package org.firstinspires.ftc.teamcode.diagnostics;
 import static java.util.Objects.isNull;
 
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.SubsystemBase;
-import com.seattlesolvers.solverslib.command.button.Trigger;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.framework.Subsystem;
+import org.firstinspires.ftc.teamcode.framework.Trigger;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,7 +39,7 @@ import java.util.Optional;
  * - Removed the `androidx.annotation.NonNull` import; not worth an extra dep for one annotation
  * - Kept the emoji severity icons since Driver Hub telemetry renders them fine
  */
-public class DiagnosticsCenter extends SubsystemBase {
+public class DiagnosticsCenter extends Subsystem {
     private static DiagnosticsCenter instance;
     private final HashMap<Problem, ProblemInstance> latestIssueByCode;
 
@@ -47,7 +47,7 @@ public class DiagnosticsCenter extends SubsystemBase {
         latestIssueByCode = new HashMap<>();
     }
 
-    /** @return a SolversLib Trigger that fires while any problem is active — useful for LEDs, rumble. */
+    /** @return a Trigger that is active while any problem is active — useful for LEDs, rumble. */
     public Trigger makeHasIssueTrigger() {
         return new Trigger(() -> !latestIssueByCode.isEmpty());
     }

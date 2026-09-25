@@ -80,10 +80,20 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
   **Update the app from Android Studio, never from the REV Hardware Client's "install Robot
   Controller app" button.** That button installs FIRST's stock app, which would wipe every OpMode we
   wrote and the Sloth runtime with them. It is meant for Blocks and OnBot Java teams, not us.
-- **Language / Framework:** **Java** with **SolversLib 0.3.6** (the maintained FTCLib fork) — command +
-  subsystem model. Hosted on the Dairy Foundation, the same home as Sloth. AI-readable docs at
-  `docs.seattlesolvers.com/llms.txt` (any page + `.md` returns markdown) — use them rather than
-  guessing API names. **Never add FTCLib**: the two cannot coexist.
+- **Language:** **Java**.
+- **Commands:** **Ivy 1.1.1** (`com.pedropathing.ivy:core` + `:pedro`), Pedro Pathing's own command
+  scheduler — the command + subsystem-locking model. **Changed 2026-09-24**, confirmed by the team:
+  it replaced SolversLib's command system everywhere. Source at `github.com/Pedro-Pathing/Ivy`, docs
+  at `pedropathing.com/docs/ivy`. **Mind the group name:** the old `com.pedropathing:ivy` stops at
+  1.0.0, which is built against Pedro 2 and crashes on Pedro 3; only `com.pedropathing.ivy:*` 1.1.0+
+  works with Pedro 3. Ivy has no subsystems, gamepad bindings, or OpMode base class, so we own a
+  thin layer for those in `framework/` (see §3).
+- **Hardware & control:** **SolversLib 0.3.6** (the maintained FTCLib fork) — kept for `MotorEx`,
+  `PIDFController` and `GamepadEx`. **Do not use its command package** (`solverslib.command.*`):
+  a second scheduler would not know Ivy's subsystem locks. Hosted on the Dairy Foundation, the same
+  home as Sloth. AI-readable docs at `docs.seattlesolvers.com/llms.txt` (any page + `.md` returns
+  markdown) — use them rather than guessing API names. **Never add FTCLib**: the two cannot
+  coexist.
 - **Navigation:** Pedro Pathing — **always run the latest version** (team decision). SolversLib's
   `pedroPathing` module is glue only and, unlike other frameworks' extensions, **does not bundle
   Pedro** — we install Pedro ourselves, so choosing the latest is the normal case, not an override.
@@ -129,12 +139,23 @@ Complexity is a cost. When it earns its keep, ship it. When it doesn't, cut it.
 at 11pm before a qualifier), and FTCLib — which SolversLib forks — is a port of WPILib, one of the
 best-documented patterns in robotics, so AI generation quality stays high.
 
-**SolversLib, not a custom framework:** we adopt the command scheduler and its subsystem conflict
-resolution (two commands can never fight over one motor) rather than owning those edge cases
-ourselves. What we deliberately do *not* inherit is a stale Pedro pin — see Navigation above.
+**Ivy, not a custom framework:** we adopt a command scheduler and its subsystem conflict resolution
+(two commands can never fight over one motor) rather than owning those edge cases ourselves. Ivy
+since 2026-09-24, SolversLib's scheduler before that. Ivy is Pedro's own, so Pedro visualizer
+exports use it directly, and it tracks Pedro releases. What we deliberately do *not* inherit is a
+stale Pedro pin — see Navigation above.
 
-**What we own anyway:** bulk-read discipline (`util/BulkReads.java`) — SolversLib does not manage
-bulk caching, and it is the biggest single lever on loop time (§0).
+**What `framework/` owns, and why it is small:** Ivy only schedules commands. Four files fill the
+gaps, each kept to the one job SolversLib used to do for us: `Subsystem` (registers itself, runs
+`periodic()` each loop), `Trigger` (gamepad edge bindings), `TeamCommand` (the
+initialize → execute → isFinished → end lifecycle on top of Ivy's `Command`), and `IvyOpMode` (the
+init → loop → reset lifecycle, and the per-loop order: periodic, then triggers, then commands).
+`FrameworkTest` pins that behaviour off the robot. **Loop-time note (§0):** Ivy's
+`Scheduler.execute()` allocates two small `ArrayDeque`s every loop. It is inside the library and
+small, but not zero — if Loop Hz shows GC hitches, profile it (§14).
+
+**What we own anyway:** bulk-read discipline (`util/BulkReads.java`) — neither Ivy nor SolversLib
+manages bulk caching, and it is the biggest single lever on loop time (§0).
 
 ---
 
@@ -157,9 +178,9 @@ Each layer only talks to the one directly below it.
    Almost no logic lives here.
 
 ### State machines
-SolversLib's command model *replaces* the finite-state-machine pattern — the command scheduler is
-itself the state-machine engine, and each command has its own small lifecycle
-(initialize → execute → isFinished → end). Build multi-step behavior by composing command groups,
+The command model *replaces* the finite-state-machine pattern — Ivy's scheduler is itself the
+state-machine engine, and each command has its own small lifecycle
+(initialize → execute → isFinished → end, via `framework/TeamCommand`). Build multi-step behavior by composing command groups,
 never a large `switch`. Use an explicit state `enum` **only inside a single subsystem** that has
 genuinely distinct modes (e.g. an intake that is STOPPED → INTAKING → EJECTING), driven from that
 subsystem's `periodic()`. So: command-based backbone; a small local state machine only where one
@@ -482,9 +503,11 @@ the code mostly aren't reading it line by line.
   autos. `resolve()` mirrors first, then applies the field tweaks, and that order is load-bearing:
   mirroring is ideal geometry, the tweaks are corrections measured on a physical field, so nudging
   first would throw the correction to the wrong side of the field.
-- **Every command has a timeout, built in — not left to the caller.** SolversLib offers
-  `.withTimeout(ms)`, but a safety net you must remember to attach is one you will forget on exactly
-  the path that needed it (§5). Defaults live as configurables; individual moves may override.
+- **Every command has a timeout, built in — not left to the caller.** A safety net you must
+  remember to attach is one you will forget on exactly the path that needed it (§5). Defaults live
+  as configurables; individual moves may override. This is why paths use our `FollowPathCommand`,
+  **not** Ivy's `PedroCommands.follow(...)`: Ivy's has no timeout. When you paste a visualizer
+  export, swap each `follow(...)` for a `FollowPathCommand`.
 - **Document as you go.** Each subsystem and command has a short comment saying what it does,
   what it owns, and how to tell if it's working.
 - **Consistent naming** matching the hardware map in §10.
