@@ -16,6 +16,7 @@ import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
 import org.firstinspires.ftc.teamcode.opmodes.Launcher;
+import org.firstinspires.ftc.teamcode.opmodes.PollenAuto;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Vision;
@@ -108,7 +109,11 @@ public final class Persistence {
             // The camera transform: lens height, camera pitch, target height. You tune these by
             // watching VisionCalibration against a tape measure, so losing them on stop would throw
             // the whole session away.
-            Vision.class
+            Vision.class,
+            // The Pollen auto's per-segment timeout and power cap. You lower the power cap to walk
+            // a new path safely and raise it once it looks right, so it must survive a stop like
+            // any other tuned number.
+            PollenAuto.class
             // KICKOFF: add each new @Configurable subsystem class here.
             // TuningClassRegistrationTest fails the build if you forget.
     );
