@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.util.BulkReads;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
- * Launcher — a bench test for a launcher wheel, held at a chosen speed in RPM.
+ * SingleLauncher — a bench test for a launcher wheel, held at a chosen speed in RPM.
  *
  * THE MOTOR: one goBILDA Yellow Jacket, 435 RPM (13.7:1), plugged into the port the hub
  * configuration calls `LF_Motor`. That name is the front-left DRIVE motor in §10, so any drive
@@ -59,11 +59,11 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * WHY THIS IS A PLAIN LinearOpMode, not the command framework: it is a diagnostic, and a diagnostic
  * must still work when something above it is broken — the same reasoning as SystemsCheck. There is
  * one button and one control loop here; a scheduler and a subsystem would add layers without adding
- * safety. The real Launcher subsystem, when the mechanism is designed, is a different job.
+ * safety. The real launcher subsystem, when the mechanism is designed, is a different job.
  */
 @Configurable
 @TeleOp(name = "Single Launcher")
-public class Launcher extends LinearOpMode {
+public class SingleLauncher extends LinearOpMode {
 
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
 
@@ -144,7 +144,7 @@ public class Launcher extends LinearOpMode {
             // Fail loud, and do not start (§5). A bench test that silently does nothing wastes a
             // bench session and teaches you the wrong thing about the mechanism.
             telemetry.addLine("*** FAIL: motor '" + MOTOR_NAME + "' is not in the configuration ***");
-            telemetry.addLine("Fix the hub configuration, or change MOTOR_NAME in Launcher.java.");
+            telemetry.addLine("Fix the hub configuration, or change MOTOR_NAME in SingleLauncher.java.");
             telemetry.update();
             waitForStart();
             return;

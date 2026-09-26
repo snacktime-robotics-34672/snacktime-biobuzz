@@ -12,7 +12,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
 /**
  * DualLauncher — a bench test for a launcher driven by TWO motors, held at a chosen speed in RPM.
- * The single-motor version is {@link Launcher}; the two keep separate tunables in Panels, so tuning
+ * The single-motor version is {@link SingleLauncher}; the two keep separate tunables in Panels, so tuning
  * one never touches the other.
  *
  * THE MOTORS: two goBILDA Yellow Jacket 6000 RPM (1:1) motors, plugged into the ports the hub
