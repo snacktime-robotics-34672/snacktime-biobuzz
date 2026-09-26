@@ -112,6 +112,52 @@ task generateBuildManifest {
 
 preBuild.dependsOn generateBuildManifest
 
+// ---------------------------------------------------------------------------------------------
+// AFTER A FULL INSTALL, DO TWO THINGS AUTOMATICALLY.
+//
+// Both were found the hard way on 2026-09-23 and both are easy to forget, so they are chained
+// onto installDebug instead of left to a human (CLAUDE.md §6):
+//
+//   1. AOT-compile the app. Android installs an APK as `interpret-only`, so the Robot Controller
+//      runs interpreted. Sloth's boot scan then took about 39 seconds instead of about 7, which is
+//      slow enough that the hub watchdog can kill the app before it finishes starting. One
+//      `compile -m speed` builds the AOT image and the scan gets fast again. A normal install
+//      resets this, which is why it belongs here and not in a one-off script.
+//
+//   2. Push the teamcode again. A full install DELETES the staged Sloth bundle - Sloth sees the
+//      app is newer than the bundle and drops it. Until the teamcode is pushed again the Driver
+//      Station shows NO OpModes at all, with nothing in the logs that looks like an error.
+//
+// Neither step fails the build if the robot is not plugged in: they log and move on, because a
+// build with no device attached is a normal thing to do.
+// ---------------------------------------------------------------------------------------------
+def rcPackage = 'com.qualcomm.ftcrobotcontroller'
+
+tasks.register('aotCompileRc', Exec) {
+    group = 'install'
+    description = 'AOT-compiles the Robot Controller app so its boot scan is fast again.'
+    commandLine new File(android.sdkDirectory, 'platform-tools/adb').absolutePath,
+            'shell', 'cmd', 'package', 'compile', '-m', 'speed', '-f', rcPackage
+    ignoreExitValue = true
+    doLast {
+        if (executionResult.get().exitValue == 0) {
+            logger.lifecycle("aotCompileRc: Robot Controller AOT-compiled (fast boot scan).")
+        } else {
+            logger.lifecycle("aotCompileRc: SKIPPED - no robot reachable over adb. " +
+                    "If the robot boots slowly, run this task with the hub connected.")
+        }
+    }
+}
+
+// installDebug is created by the Android plugin, so it only exists after evaluation.
+afterEvaluate {
+    tasks.matching { it.name == 'installDebug' }.configureEach {
+        finalizedBy 'aotCompileRc', 'deploySloth'
+    }
+    // AOT first, then push the teamcode onto the running app.
+    tasks.named('deploySloth') { mustRunAfter 'aotCompileRc' }
+}
+
 repositories {
     maven {
         url = 'https://maven.brott.dev/'
@@ -143,17 +189,39 @@ dependencies {
     implementation "org.solverslib:pedroPathing:0.3.6" // pedroPathing
     //    implementation "org.solverslib:photon:0.3.6" // photon is optional (see docs for more info)
 
-    implementation "com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0" // FTC Dashboard (Sloth fork — swaps stock dashboard to avoid Sloth hot-reload conflict)
+    // FTC Dashboard REMOVED 2026-09-23. It and Panels each start their own Limelight forwarder, and
+    // they want the same ports (5800/5801/5805/5807). Whichever starts second threw
+    // java.net.BindException: Address already in use out of NanoHTTPD, which is fatal - the RC app
+    // died about 30 seconds after every start and the robot never became usable. Panels already
+    // ships a Limelight proxy (CLAUDE.md §2), so the dashboard was duplicating it.
+    // Removing the `dashboard` artifact takes only the servers: FtcDashboard and
+    // limelight/HttpForwarder live there, while `slothboard:core` - which fullpanels depends on and
+    // still resolves - holds DashboardCore and config classes and NO server. Our teamcode never
+    // referenced com.acmerobotics at all. If you put this back, expect the port clash to return.
+    // implementation "com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0"
     implementation "dev.frozenmilk.sinister:Sloth:0.3.2" // Sloth hot-reload runtime
 
     // Pedro Pathing 3. The ARTIFACT NAMES changed in 3.0.0, they are not a version bump:
     //   com.pedropathing:ftc       -> com.pedropathing:revhub   (the REV hub bindings)
-    //   com.pedropathing:telemetry -> com.pedropathing:tuning    (the tuning/telemetry OpModes)
+    //   com.pedropathing:telemetry -> com.pedropathing:tuning    (AutoTune - see the warning below)
     // Pedro 3 publishes to Maven Central, which the root build.gradle already declares.
     // SolversLib 0.3.6 above is REQUIRED with it: its pedroPathing module depends on
     // com.pedropathing:revhub:3.0.0, and 0.3.5 and older are built against Pedro 2.x.
     implementation 'com.pedropathing:revhub:3.0.1'
-    implementation 'com.pedropathing:tuning:1.0.1'
+
+    // WARNING - com.pedropathing:tuning is BACK ON at Aaron's direction, 2026-09-23, to re-measure
+    // the boot behaviour. It is expected to break startup. Read this before changing it again:
+    // AutoTune's TunerScanner.getTargets() returns `new NarrowSearch()` on EVERY call instead of
+    // caching it in a field. Sinister calls getTargets() once per class it scans, so each call
+    // rebuilds the whole exclusion list with String.split(). With SDK 12 + Pedro 3 + SolversLib
+    // + Panels the class count got big enough that this one scanner ran for 15+ seconds on the
+    // boot scan. The RC app never finished onCreate, the hub watchdog relaunched it after 10
+    // seconds, and the robot sat in a restart loop showing NO OpModes on the Driver Station.
+    // Proven on the comp robot 2026-09-23 from the hub's own ANR trace: 12 of 13 scanner threads
+    // idle, one pinned in TunerScanner.getTargets. Versions 1.0.0 and 1.0.1 are byte-identical
+    // (same SHA-1), so there is no version to fall back to. Removing it costs us AutoTune, which
+    // means Pedro path tuning has no procedure to run - see CHANGELOG 2026-09-23.
+    implementation 'com.pedropathing:tuning:1.0.0'
 
     // Panels Dashboard (Sloth fork). Version reads <sloth build>+<panels version>, same scheme as
     // the dashboard line above. MUST stay the Sloth fork: stock Panels finds tunables by scanning

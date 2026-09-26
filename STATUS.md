@@ -1,7 +1,46 @@
 # STATUS.md — where this project actually is
 
-**Last updated:** 2026-09-07 — **Tuning now saves itself from every OpMode, the competition
-robot's tuning is in git for the first time, and the vision layer is built but unproven.**
+**Last updated:** 2026-09-23 — **The new stack ran on a robot for the first time, did not boot, and
+now does. FTC Dashboard is out of the stack.**
+
+The migration to SDK 12 + Pedro 3 had never been run on a robot. The first attempt found **two
+separate bugs, both of which stopped the Robot Controller app from starting**, and both showed the
+same symptom: **no OpModes on the Driver Station, with nothing anywhere that looked like an error.**
+Both were read off the hub's own ANR trace over a USB cable.
+
+1. **Pedro's AutoTune scanner hung startup.** `TunerScanner.getTargets()` builds a fresh search
+   target on every call instead of keeping one, and Sinister calls it once per class it scans, so
+   the cost grows with the size of the APK. It ran for over 15 seconds, the app never finished
+   `onCreate`, and the hub watchdog relaunched it forever. `tuning` 1.0.0 and 1.0.1 are
+   byte-identical, so there is no version to fall back to.
+2. **FTC Dashboard and Panels fought over the Limelight ports.** Both start their own Limelight
+   forwarder on 5800/5801/5805/5807; the loser threw `java.net.BindException` out of NanoHTTPD,
+   which is fatal, and the app died about 30 seconds after every start. **FTC Dashboard is now
+   removed** — Panels already ships a Limelight proxy, and our code never referenced
+   `com.acmerobotics`.
+
+Removing the dashboard cut the class count enough that AutoTune's scanner now finishes in under a
+millisecond, so **`com.pedropathing:tuning` is back in and the tuning procedures are restored**. The
+margin is thin: if startup ever hangs after adding a library, suspect this first.
+
+**Verified on the competition robot:** process stable, no crashes, no relaunches, all six OpModes
+registered, a Sloth hot reload landed in the running app in under a second, and **`PanelsProbe`
+confirmed live tuning still works** after losing the dashboard (§2's canary requirement, satisfied).
+
+**Two deploy traps were found and automated away.** A full install used to leave the robot in a
+state that looks fine and is not: the app is installed *interpret-only* (slow enough for the
+watchdog to kill it) and **the staged Sloth teamcode is deleted**, which is what empties the
+OpMode list. `installDebug` now chains `aotCompileRc` and `deploySloth` itself. **Android Studio's
+green Run button bypasses all of this** — use the `fullInstall` run configuration instead. Both run
+configurations ship in the repo, so the whole team gets them on sync.
+
+Off-robot tests: **111 pass**. (Earlier entries in this file said 133 and 142; both were wrong —
+111 is the counted number of `@Test` methods and of testcases in the results XML.)
+
+---
+
+**Previously (2026-09-07):** tuning saves itself from every OpMode, the competition robot's tuning
+is in git for the first time, and the vision layer is built but unproven.
 
 Three things landed in the week of 2026-09-01:
 
@@ -18,7 +57,7 @@ Three things landed in the week of 2026-09-01:
    `Vision` (layer 2), `VisionCalibration` (OpMode) and `TargetGeometry` (pure math, tested). It
    needs a FULL INSTALL and a `limelight` entry in the hub configuration before it will run at all.
 
-Off-robot tests went 73 → **133**.
+Off-robot tests went 73 → **133** (miscounted at the time; see the 2026-09-23 entry).
 
 ---
 
@@ -124,20 +163,26 @@ of checking. Verify, don't assume.
 
 ## What's ACTUALLY installed
 
-Verified via `./gradlew :TeamCode:dependencies` and by reading `TeamCode/build.gradle`.
+Verified 2026-09-23 via `./gradlew :TeamCode:dependencies --configuration debugRuntimeClasspath`
+and by reading `TeamCode/build.gradle`.
 
 | Component | Version | Notes |
 |---|---|---|
-| FTC SDK | **11.1.0** | (see 11.2 hold in Landmines) |
-| `org.solverslib:core` | **0.3.4** | command framework (FTCLib fork) |
-| `org.solverslib:pedroPathing` | **0.3.4** | glue only — does NOT bundle Pedro |
-| `com.pedropathing:ftc` | **2.1.2** | our own declared line — we own this version |
-| `com.pedropathing:telemetry` | 1.0.0 | |
-| `com.bylazar.sloth:fullpanels` | **0.2.4.1+1.0.12** | full Panels bundle — **the Sloth fork, and it must stay that way.** Version reads `<sloth build>+<panels version>`. Stock `com.bylazar:fullpanels` cannot see Sloth-loaded classes, which silently breaks all live tuning (see Landmines) |
-| `dev.frozenmilk:Load` | **0.2.4** | Sloth Load Gradle plugin — root buildscript classpath |
-| `dev.frozenmilk.sinister:Sloth` | **0.2.4** | Sloth hot-reload runtime |
-| `com.acmerobotics.slothboard:dashboard` | **0.2.4+0.5.1** | Sloth's fork of FTC Dashboard (resolves the conflict — same API) |
+| FTC SDK (all 8 artifacts) | **12.0.0** | the 2026-27 BIOBUZZ season release |
+| `org.solverslib:core` | **0.3.6** | command framework (FTCLib fork). 0.3.4 pinned the SDK to *strictly* 11.1.0, which blocked SDK 12 |
+| `org.solverslib:pedroPathing` | **0.3.6** | glue only — does NOT bundle Pedro |
+| `com.pedropathing:revhub` | **3.0.1** | renamed from `com.pedropathing:ftc` in Pedro 3 — an artifact rename, not a version bump |
+| `com.pedropathing:tuning` | **1.0.0** | renamed from `com.pedropathing:telemetry`. **Startup risk — see §2 of CLAUDE.md.** 1.0.0 and 1.0.1 are byte-identical (same SHA-1) |
+| `com.bylazar.sloth:fullpanels` | **0.3.2+1.0.13** | full Panels bundle — **the Sloth fork, and it must stay that way.** Version reads `<sloth build>+<panels version>` |
+| `dev.frozenmilk:Load` | **0.3.2** | Sloth Load Gradle plugin — root buildscript classpath. Keep equal to the Sloth runtime |
+| `dev.frozenmilk.sinister:Sloth` | **0.3.2** | Sloth hot-reload runtime |
+| `org.firstinspires.ftc:OnBotJava` | **12.0.0** | **Do not remove.** Sloth loads our teamcode *through* it, and `FtcRobotControllerActivity` imports it |
 | `junit` | 4.13.2 | `testImplementation` only, does not affect APK |
+
+**REMOVED 2026-09-23 — `com.acmerobotics.slothboard:dashboard`.** FTC Dashboard is no longer in
+this stack. It and Panels each started a Limelight forwarder on the same ports and the app died on
+`BindException`. Removing the `dashboard` artifact dropped `slothboard:core` with it; Panels
+resolves alone. **Adding it back brings the port clash back.**
 
 **Repositories in `TeamCode/build.gradle`:**
 `maven.brott.dev` · `mymaven.bylazar.com/releases` · `repo.dairy.foundation/releases` ·
@@ -313,6 +358,29 @@ code, not memory:
 | Stand your ground | ✅ built 2026-08-30 |
 | Drive-to-position commands | ✅ built 2026-08-30 |
 | Pose transfer TeleOp ↔ Auton | ❌ **not built** — see below |
+
+---
+
+## Open work — top of the list as of 2026-09-23
+
+**These four came out of the first on-robot run of the new stack. Read them before the older list
+below, which was written when the stack still had FTC Dashboard in it.**
+
+1. **The test bot has never seen the new stack.** It is still on the pre-migration build, so
+   whoever deploys to it next will hit the same restart loop the comp bot had. The fix is already
+   in the code — it needs a **`fullInstall`**, not a `deploySloth`.
+2. **Neither robot is tuned for Pedro 3.** AutoTune's procedures are restored and the module is
+   back, but no tuning session has been run. Foresight's brake coefficients in `Constants.java`
+   are still placeholders, so path following will be poor until each robot's own numbers replace
+   them. AutoTune is a web page the robot serves whenever the RC app runs — there is no tuning
+   OpMode any more.
+3. **The startup margin is thin.** `TunerScanner` finishes instantly now only because FTC
+   Dashboard's classes are gone. Adding a library could tip it back over, and the symptom is the
+   silent restart loop with an empty OpMode list. Confirm from `/data/anr/traces.txt` before
+   guessing.
+4. **`com.pedropathing:tuning` is an upstream bug we are living with.** `TunerScanner.getTargets()`
+   should cache its search target and does not. Worth reporting upstream — the ANR trace and the
+   decompiled method are in the 2026-09-23 session. If they fix it, the margin problem goes away.
 
 ---
 
@@ -765,6 +833,31 @@ Managed via `claude.ai/code/routines`:
   admins bypass it always. **SETTLED 2026-09-11 — we keep the rule and students use PRs** (see
   "Decisions still standing"). Aaron's pushes still bypass the gate, so a change made from his
   account is never reviewed by anybody — worth remembering when the AI commits on his behalf.
+- **HOW TO DEPLOY (changed 2026-09-23).** Two run configurations ship in the repo and appear in
+  everyone's Android Studio dropdown after a sync. **`deploySloth`** for teamcode changes
+  (sub-second). **`fullInstall`** for a library or OpMode-name change, and after any sync that
+  changed dependencies. **Never the green Run arrow** — it installs through Android Studio instead
+  of Gradle, which skips the two repair steps and leaves the robot with *no teamcode on it* and an
+  empty OpMode list, silently. If the Driver Station is ever empty, the answer is `deploySloth`,
+  never a full install.
+- **The hub has no clock of its own.** It takes its time from the Driver Station. With no DS
+  connected it sits in 1969, which makes snapshot timestamps and `LogCleanup`'s age check
+  meaningless — and it confuses Sloth's staleness check, which threw away a freshly pushed teamcode
+  bundle more than once on 2026-09-23. Connect the DS before collecting anything you mean to keep.
+- **Logcat is nearly useless during startup.** The SDK's `ClassManager` throws thousands of
+  `ClassNotFoundException`s *with stack traces* while scanning, so the ring buffer holds only a few
+  seconds. Filter by tag instead:
+  `adb logcat -s SinisterRegisteredOpModes:V SlothTeamCodeLoader:V`. `adb logcat -G 32M` does not
+  work on this hub. For "the robot will not start", read `/data/anr/traces.txt` — `adb root` works
+  here.
+- **A stale `offline` adb entry hides a working USB cable** and makes Android Studio deploy to
+  nothing. `adb devices -l` first; `adb disconnect` + `adb kill-server` to clear it.
+- **Commits, 2026-09-23** (newest first): `f0d6f89` live tuning re-confirmed after the dashboard
+  change · `fd3ff08` tell the team which run configuration to use · `c7fa800` name the
+  "Staged OnBotJava Load" message · `bde2a0b` §6 deploy rules + do not remove OnBotJava ·
+  `b4c8f22` charter back in line with the build · `b2c5528` **`fullInstall` run configuration** ·
+  `1f71d03` **full install repairs itself; tuning procedures restored** · `9f9579b` **FTC Dashboard
+  removed so the robot boots** · `4e0a557` AutoTune module removed (later re-added in `1f71d03`)
 - **Recent commits, week of 2026-09-01** (newest first): `45bcf9a` total line on the amp readout ·
   `98f6c7e` save only fields the dashboard can turn · `ff85859` **comp's tuning file added** ·
   `0acc94f`/`efa2046` tuning save guide rewritten · `55733ee`/`4afec1e`/`4933ae3` per-motor drive
