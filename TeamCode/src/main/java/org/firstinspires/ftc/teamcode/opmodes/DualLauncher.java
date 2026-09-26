@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -53,7 +55,10 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * OTHER too: same power and very different speeds means one motor is loaded, geared or wired
  * differently from the other. Both are free to read — encoder velocity rides the bulk read (§4).
  *
- * LOOP-TIME READOUT: required here even though this never runs in a match. The D term divides by
+ * WHERE THE NUMBERS ARE: the Driver Hub shows RPM only. Target RPM, error, power and Loop Hz are
+ * on Panels, so have Panels open when you tune.
+ *
+ * LOOP-TIME READOUT (on Panels): required even though this never runs in a match. The D term divides by
  * the measured loop time, so timing is part of the control law — a loop that stutters makes the
  * derivative spike. Watch Loop Hz whenever you tune kD.
  *
@@ -167,6 +172,9 @@ public class DualLauncher extends LinearOpMode {
 
         waitForStart();
 
+        // Looked up once, not per loop. Panels buffers lines until update() is called.
+        TelemetryManager panels = PanelsTelemetry.INSTANCE.getTelemetry();
+
         // What we last sent the motors. While X is held the controller asks for a slightly
         // different power every loop, so this mostly stops the repeated zero-writes while the
         // wheel is idle — a motor write is a round-trip to the hub (§0).
@@ -244,16 +252,23 @@ public class DualLauncher extends LinearOpMode {
                 lastPower = power;
             }
 
-            // The Driver Hub shows the launcher and NOTHING else (§8 glanceable, §4 rule 6).
-            // Numbers, not built strings, so the loop stays allocation-free (§4 rule 8).
-            telemetry.addData("X held", held ? "SPINNING" : "off");
-            telemetry.addData("Target RPM", targetRpm);
+            // Driver Hub: RPM and nothing else — one line per motor, so a motor falling behind the
+            // other is visible at a glance (§8 glanceable, §4 rule 6). The captions are constants
+            // joined at compile time, so this builds no strings per loop (§4 rule 8).
             telemetry.addData("RPM " + MOTOR_NAME, rpm);
             telemetry.addData("RPM " + SECOND_MOTOR_NAME, secondRpm);
-            telemetry.addData("Error RPM", error);
-            telemetry.addData("Power", power);
-            telemetry.addData("Loop Hz", loopHz);
             telemetry.update();
+
+            // Panels gets the rest, for tuning at the bench. Loop Hz lives here now: §4 rule 7
+            // requires it be telemetered, and the D term depends on loop timing.
+            panels.addData("Target RPM", targetRpm);
+            panels.addData("RPM " + MOTOR_NAME, rpm);
+            panels.addData("RPM " + SECOND_MOTOR_NAME, secondRpm);
+            panels.addData("Error RPM", error);
+            panels.addData("Power", power);
+            panels.addData("X held", held);
+            panels.addData("Loop Hz", loopHz);
+            panels.update();
         }
 
         // Never leave a wheel spinning after the OpMode ends (§5). Both, every time.

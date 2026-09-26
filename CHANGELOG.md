@@ -20,6 +20,7 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-26
+- Single Launcher and Dual Launcher now show only RPM on the Driver Station (Dual shows one line per motor). Target RPM, error, power and Loop Hz moved to Panels, so have Panels open when tuning. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Renamed the single-motor launcher test's file and class from `Launcher` to `SingleLauncher`, so it is clearly different from `DualLauncher` in the code as well as on the Driver Station. Its saved tuning moves from `Launcher.*` to `SingleLauncher.*` keys; `Persistence` carries the old names across, so no tuning is lost. Needs a full install. (`opmodes/SingleLauncher.java`, `util/Persistence.java`)
 - Renamed the single-motor launcher test on the Driver Station from `Launcher` to `Single Launcher`, so it reads clearly next to `Dual Launcher`. Only the displayed name changed; the class and its saved tuning keys are still `Launcher`. Needs a full install. (`opmodes/Launcher.java`)
 - New `Dual Launcher` bench-test OpMode: holds a launcher wheel driven by both `LF_Motor` and `LR_Motor` (goBILDA 6000 RPM, `ticksPerRev` 28) at a set RPM, starting at 3000, with each D-pad press moving the target 100 RPM. PD control plus a feedforward term (`kF`; set it to 0 for pure PD). Its tunables are separate from the single-motor Launcher and saved per robot. New OpMode, so it needs a full install. (`opmodes/DualLauncher.java`, `util/Persistence.java`)
