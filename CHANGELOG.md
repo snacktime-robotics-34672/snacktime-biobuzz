@@ -19,7 +19,70 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-26
+- Single Launcher now drives `L_INTAKE`, and Dual Launcher drives `L_INTAKE` + `R_INTAKE` (Expansion Hub ports 0 and 1), instead of the drive motors. Dual Launcher gains `secondMotorReversed` (Panels, read at init) in case the two motors face each other and would fight; check direction at `maxPower` 0.2 first. Anything that runs the intake will now spin the launcher too. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
+- Target RPM is back on the Driver Station for Single Launcher and Dual Launcher, above the RPM line(s), so you can see what the D-pad set. Error, power and Loop Hz stay on Panels. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
+- Single Launcher and Dual Launcher now show only RPM on the Driver Station (Dual shows one line per motor). Target RPM, error, power and Loop Hz moved to Panels, so have Panels open when tuning. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
+- Renamed the single-motor launcher test's file and class from `Launcher` to `SingleLauncher`, so it is clearly different from `DualLauncher` in the code as well as on the Driver Station. Its saved tuning moves from `Launcher.*` to `SingleLauncher.*` keys; `Persistence` carries the old names across, so no tuning is lost. Needs a full install. (`opmodes/SingleLauncher.java`, `util/Persistence.java`)
+- Renamed the single-motor launcher test on the Driver Station from `Launcher` to `Single Launcher`, so it reads clearly next to `Dual Launcher`. Only the displayed name changed; the class and its saved tuning keys are still `Launcher`. Needs a full install. (`opmodes/Launcher.java`)
+- New `Dual Launcher` bench-test OpMode: holds a launcher wheel driven by both `LF_Motor` and `LR_Motor` (goBILDA 6000 RPM, `ticksPerRev` 28) at a set RPM, starting at 3000, with each D-pad press moving the target 100 RPM. PD control plus a feedforward term (`kF`; set it to 0 for pure PD). Its tunables are separate from the single-motor Launcher and saved per robot. New OpMode, so it needs a full install. (`opmodes/DualLauncher.java`, `util/Persistence.java`)
+- The Launcher bench test now holds the wheel at a chosen RPM instead of running at a fixed power. It drives only `LF_Motor`, set up for a goBILDA 435 RPM motor (`ticksPerRev` 384.5, top speed 435), and each D-pad press moves the target 25 RPM. Control is feedforward (`kF`) plus PD, all Panels tunables; tune `kF` first with `kP` and `kD` at 0. Brought over from the SDK 11 side branch now that master runs again. (`opmodes/Launcher.java`)
+
+## 2026-09-24
+- **Commands now run on Ivy, Pedro's own command scheduler, instead of SolversLib's.** Confirmed by
+  the team before any dependency moved (§6). Added `com.pedropathing.ivy:core:1.1.1` and
+  `com.pedropathing.ivy:pedro:1.1.1`. SolversLib stays, but only for motors (`MotorEx`), the PIDF
+  controller and gamepads; nothing uses its command package any more. Why: Pedro visualizer exports
+  are written for Ivy, and Ivy tracks Pedro releases. (TeamCode/build.gradle)
+- **Watch the name: the old `com.pedropathing:ivy` is the wrong library.** It stops at 1.0.0, which is
+  built for Pedro 2 and would crash on our Pedro 3 the first time a path or a wait ran. Ivy 1.1.x moved
+  to the group `com.pedropathing.ivy` and is built against Pedro 3.0.0. Checked from its source:
+  every Pedro class it touches exists in our 3.0.1.
+- **New `framework/` package: the four things SolversLib did that Ivy does not.** `Subsystem`
+  registers itself and runs `periodic()` every loop. `Trigger` binds a gamepad condition to a command
+  (press starts it, release cancels it). `TeamCommand` keeps the familiar initialize / execute /
+  isFinished / end methods on top of Ivy. `IvyOpMode` replaces `CommandOpMode` with the same shape
+  and the same loop order: periodic, then triggers, then commands. (framework/)
+- **Every OpMode, command and subsystem moved over; behaviour is meant to be identical.** Groups and
+  delays are Ivy's `sequential(...)` and `waitMs(...)`. The intake trigger, timeouts, subsystem
+  locking and command logging (verboseTelemetry) all work as before. The scheduler hooks that logged
+  commands are gone; `TeamCommand` logs its own start and end instead. (commands/, subsystems/,
+  opmodes/, diagnostics/)
+- **Paths still use our `FollowPathCommand`, not Ivy's `follow()`.** Ivy's has no timeout, and §5 says
+  nothing may hang the robot. When pasting a visualizer export, swap each `follow(...)` for a
+  `FollowPathCommand`. (CLAUDE.md §9)
+- **12 new off-robot tests** run the real Ivy scheduler through the same loop step the robot uses:
+  lifecycle, subsystem locking, trigger edges, loop order, clean-up between OpModes. 123 tests pass.
+  (test/.../framework/FrameworkTest)
+- **Loop-time cost, flagged (§0):** Ivy's scheduler allocates two small lists every loop. It is inside
+  the library and cannot be changed from here. Watch Loop Hz on the first robot run.
+- **This needs a full install, then a Sloth push** (new libraries, §6 Tier 3). **Test bot first, and
+  watch startup:** more classes means a longer Sloth boot scan, and §2 says that margin is thin.
+  Nothing has run on a robot yet. (CLAUDE.md §2, §3, §9)
+- **Builds on this laptop need Android Studio's JDK.** The system Java is now Oracle 26, which Gradle
+  9.1 cannot run. From a terminal, set `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jbr`
+  first; Android Studio itself already uses that JDK.
+
 ## 2026-09-23
+- **The TeleOp Driver Hub now shows four lines and nothing else:** Loop Hz, X in, Y in, Heading.
+  Asked for by Aaron to cut clutter in front of a driver. Nothing was thrown away that mattered -
+  the per-wheel drive currents moved to Panels, where §4 rule 6 says heavy data belongs, and §5
+  still gets its per-wheel telemetry. **Three things did leave the Driver Hub on purpose, and they
+  are worth knowing:** the robot identity banner (still on Panels and in every snapshot, but a
+  DRIVER can no longer tell the comp robot from the test bot at a glance); drive mode and intake
+  state, which §8 lists as Driver Hub items; and "Worst ms", so only Hz is shown where §4 rule 7
+  asks for ms and Hz. Loop time is still measured every loop - only the readout got shorter. All
+  three are written into the code beside the telemetry block so nobody restores them by accident.
+  (opmodes/TeleOpExample)
+- **The Launcher bench test now spins the left-rear wheel as well as the front-left.** Same button
+  (hold X), same power, from the same number - one value feeds both motors, so they cannot drift
+  apart. Both are checked at init and the OpMode refuses to start if either is missing, because
+  running one of a pair is worse than running neither. Both coast on release and both stop when the
+  OpMode ends. Telemetry now shows a velocity per motor: with two wheels the useful check is that
+  they MATCH, since the same power giving very different speeds means one is loaded, geared or
+  wired differently. **Read the warning first - this spins TWO DRIVE motors on the same side of the
+  robot, so on the ground it does not just move, it drives hard to one side. Put it on blocks.**
+  (opmodes/Launcher)
 - **Wrote down the tuning trap that eats your work with no warning.** The robot only saves tuning
   while an OpMode is RUNNING - `pollAutosave` lives inside the OpMode loop. Turn a knob in Panels
   with nothing running and the value really does change in memory, the dashboard looks right, and
@@ -173,6 +236,25 @@ one-command rollback target is easy to find later.
   TeamCode/build.gradle, CLAUDE.md §2)
 
 ## 2026-09-22
+- **New "34672 Pollen Auto" OpMode — the five-segment route from the Pedro Pathing Visualizer.** The
+  robot drives out to the pollen, then runs four reversed segments up the field. The pose numbers are
+  exactly the ones drawn in the visualizer; nothing was re-aimed by hand. (`opmodes/PollenAuto.java`)
+- **It drives the shape and scores nothing, on purpose.** The visualizer export contains no mechanism
+  actions, so the intake never runs. The two places a mechanism command belongs are marked in the
+  file, with the exact lines to add once the intake is on the robot that runs this.
+- **Ported to Pedro 3, so it uses the export's own path API.** The first draft was written for Pedro 2
+  and stopped compiling when master moved to Pedro 3.0.1. Pedro 3 is what the visualizer exports, so
+  the paths now read almost line for line like the export (`Paths.line`, `Paths.curve`, `.linear`,
+  `.reverseTangent`). What still differs from the export: our scheduler, our per-segment timeouts, our
+  bulk-cache and loop-time rules, and the alliance menu, so the poses are written once for blue and red
+  is derived.
+- **One live knob: segment timeout.** The per-path power cap is gone, because Pedro 3 has no per-path
+  cap. For a slow first run, turn `Constants.compMaxPower` / `testMaxPower` down in Panels **before
+  INIT**. The follower reads it once, when it is built.
+- **Known before anyone runs it:** Foresight is untuned on BOTH robots until AutoTune runs on each, so
+  this will follow loosely for now. Segments 2-5 drive backwards. And the poses must be the BLUE ones;
+  if they were drawn on red, every segment lands in the wrong quarter of the field.
+- **This one needs a full install, not a hot reload** — it is a new OpMode registration (§6 Tier 3).
 - **Moved to Pedro Pathing 3.0.1.** Pedro 3 is a rewrite, not an update: a new path-following
   algorithm (Foresight), a new way to build paths, and a validated config system. Every file that
   touched Pedro changed. Confirmed by Aaron before any dependency moved (§6).

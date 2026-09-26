@@ -6,8 +6,8 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.CommandBase;
 
+import org.firstinspires.ftc.teamcode.framework.TeamCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Drivetrain;
 
 import java.util.function.Supplier;
@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * one idea the whole class exists for.
  *
  * USE IT IN A COMMAND TREE:
- *   schedule(new SequentialCommandGroup(
+ *   schedule(sequential(
  *       new DriveToPoseCommand(follower, SCORING_POSE),
  *       mechanism.scoreCommand()
  *   ));
@@ -35,15 +35,15 @@ import java.util.function.Supplier;
  *
  * REQUIREMENTS: this command does not claim a subsystem on its own, because it drives through the
  * Pedro follower rather than a subsystem. If you also have commands that drive the Drivetrain
- * directly, chain {@code .addRequirements(drivetrain)} so the scheduler can stop the two from
- * fighting over the same motors (CLAUDE.md §2).
+ * directly, call {@code addRequirements(drivetrain)} on this command so the scheduler can stop the
+ * two from fighting over the same motors (CLAUDE.md §3).
  *
  * TIMEOUT IS BUILT IN, not optional (CLAUDE.md §5: nothing may hang the robot through a whole
  * match). It defaults to {@link Drivetrain#driveToPoseTimeoutSec}, which is live-tunable. A timeout
  * stops the robot and logs loudly — reaching it means the robot did not get there, and that should
  * never pass silently.
  */
-public class DriveToPoseCommand extends CommandBase {
+public class DriveToPoseCommand extends TeamCommand {
 
     /**
      * Below this distance we do not build a path at all. Pedro computes {@code 1 / length} when it

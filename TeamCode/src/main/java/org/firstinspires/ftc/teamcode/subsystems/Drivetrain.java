@@ -2,13 +2,13 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
-import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.util.CurrentTracker;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.framework.Subsystem;
 
 /**
  * Drivetrain — mecanum drive with the per-wheel health telemetry section 5 requires.
@@ -20,7 +20,7 @@ import org.firstinspires.ftc.teamcode.config.TuningConfig;
  * The Pinpoint is I2C — read it ONCE per loop at the OpMode level, never here (section 4, rule 5).
  */
 @Configurable
-public class Drivetrain extends SubsystemBase {
+public class Drivetrain extends Subsystem {
 
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
     public static double driveSpeedCap    = 1.0;   // 0..1, teleop full-speed multiplier

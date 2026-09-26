@@ -2,8 +2,8 @@ package org.firstinspires.ftc.teamcode.commands;
 
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.CommandBase;
 
+import org.firstinspires.ftc.teamcode.framework.TeamCommand;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 
 /**
@@ -15,7 +15,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Intake;
  *
  * IN AUTO: give it a time and drop it in a tree, where it doubles as "run the intake for N seconds".
  *
- *   new SequentialCommandGroup(
+ *   sequential(
  *       new DriveToPoseCommand(follower, PIECE_POSE),
  *       new IntakeCommand(intake).setTimeout(2.0)
  *   );
@@ -28,7 +28,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Intake;
  * REQUIREMENTS: this command claims the Intake, so the scheduler stops anything else from driving
  * the same motor at the same time (§3).
  */
-public class IntakeCommand extends CommandBase {
+public class IntakeCommand extends TeamCommand {
 
     private final Intake intake;
     private final ElapsedTime timer = new ElapsedTime();

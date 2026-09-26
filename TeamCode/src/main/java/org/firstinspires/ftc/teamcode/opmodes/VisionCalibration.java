@@ -2,10 +2,9 @@ package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.CommandScheduler;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.framework.IvyOpMode;
 import org.firstinspires.ftc.teamcode.subsystems.Vision;
 import org.firstinspires.ftc.teamcode.util.BulkReads;
 import org.firstinspires.ftc.teamcode.util.LogCleanup;
@@ -40,7 +39,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * the link is poor.
  */
 @TeleOp(name = "Vision Calibration", group = "Tuning")
-public class VisionCalibration extends CommandOpMode {
+public class VisionCalibration extends IvyOpMode {
 
     private final LoopTimer loopTimer = new LoopTimer();
     private BulkReads bulkReads;
@@ -123,6 +122,6 @@ public class VisionCalibration extends CommandOpMode {
         stopSnap.networkName = robotId.networkName;
         stopSnap.captureLoop(loopTimer);
         Persistence.writeSnapshot(stopSnap, hardwareMap);
-        CommandScheduler.getInstance().reset();
+        super.reset();
     }
 }

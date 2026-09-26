@@ -5,12 +5,13 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.command.InstantCommand;
-import com.seattlesolvers.solverslib.command.SubsystemBase;
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.commands.Commands;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.framework.Subsystem;
 import org.firstinspires.ftc.teamcode.logic.IntakeLogic;
 import org.firstinspires.ftc.teamcode.util.RobotIdentity;
 
@@ -57,7 +58,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * that was never supposed to have the mechanism in the first place.
  */
 @Configurable
-public class Intake extends SubsystemBase {
+public class Intake extends Subsystem {
 
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
 
@@ -231,8 +232,8 @@ public class Intake extends SubsystemBase {
      * class — see {@code commands/IntakeCommand} — because running needs a timeout and stopping
      * does not.
      */
-    public InstantCommand stopCommand() {
-        return new InstantCommand(this::stop, this);
+    public Command stopCommand() {
+        return Commands.instant(this::stop).requiring(this);
     }
 
     @Override

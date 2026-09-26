@@ -15,7 +15,9 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
-import org.firstinspires.ftc.teamcode.opmodes.Launcher;
+import org.firstinspires.ftc.teamcode.opmodes.DualLauncher;
+import org.firstinspires.ftc.teamcode.opmodes.SingleLauncher;
+import org.firstinspires.ftc.teamcode.opmodes.PollenAuto;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Vision;
@@ -104,11 +106,18 @@ public final class Persistence {
             // The launcher bench test's power. It is the number a bench session exists to find, so
             // losing it on stop would throw the session away — unlike the Pedro tuners' distances,
             // which are per-run settings and deliberately not persisted.
-            Launcher.class,
+            SingleLauncher.class,
+            // The two-motor launcher bench test. Same reason as SingleLauncher, and kept separate so
+            // tuning one never overwrites the other.
+            DualLauncher.class,
             // The camera transform: lens height, camera pitch, target height. You tune these by
             // watching VisionCalibration against a tape measure, so losing them on stop would throw
             // the whole session away.
-            Vision.class
+            Vision.class,
+            // The Pollen auto's per-segment timeout and power cap. You lower the power cap to walk
+            // a new path safely and raise it once it looks right, so it must survive a stop like
+            // any other tuned number.
+            PollenAuto.class
             // KICKOFF: add each new @Configurable subsystem class here.
             // TuningClassRegistrationTest fails the build if you forget.
     );
@@ -139,6 +148,12 @@ public final class Persistence {
         m.put("Drivetrain.headingI", "Drivetrain.headingHoldI");
         m.put("Drivetrain.headingD", "Drivetrain.headingHoldD");
         m.put("Drivetrain.headingF", "Drivetrain.headingHoldF");
+        // 2026-09-26: the single-motor launcher test's class went Launcher -> SingleLauncher, so it
+        // reads clearly next to DualLauncher. Every key carries the class name, so every field moves.
+        for (String f : new String[] {"ticksPerRev", "targetRpm", "rpmStep", "minRpm", "maxRpm",
+                "kF", "kP", "kD", "maxPower"}) {
+            m.put("Launcher." + f, "SingleLauncher." + f);
+        }
         return m;
     }
 
