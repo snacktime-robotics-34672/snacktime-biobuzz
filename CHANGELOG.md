@@ -19,6 +19,9 @@ one-command rollback target is easy to find later.
 
 ---
 
+## 2026-09-26
+- The Launcher bench test now holds the wheel at a chosen RPM instead of running at a fixed power. It drives only `LF_Motor`, set up for a goBILDA 435 RPM motor (`ticksPerRev` 384.5, top speed 435), and each D-pad press moves the target 25 RPM. Control is feedforward (`kF`) plus PD, all Panels tunables; tune `kF` first with `kP` and `kD` at 0. Brought over from the SDK 11 side branch now that master runs again. (`opmodes/Launcher.java`)
+
 ## 2026-09-24
 - **Commands now run on Ivy, Pedro's own command scheduler, instead of SolversLib's.** Confirmed by
   the team before any dependency moved (§6). Added `com.pedropathing.ivy:core:1.1.1` and
