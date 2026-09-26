@@ -62,7 +62,7 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * safety. The real Launcher subsystem, when the mechanism is designed, is a different job.
  */
 @Configurable
-@TeleOp(name = "Launcher")
+@TeleOp(name = "Single Launcher")
 public class Launcher extends LinearOpMode {
 
     // ---- Tunables (Panels live-editable, §6 Tier 1) ----------------------------------------
