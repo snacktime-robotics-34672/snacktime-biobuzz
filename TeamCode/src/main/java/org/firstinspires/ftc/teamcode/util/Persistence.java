@@ -15,6 +15,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.teamcode.config.FieldTweaks;
 import org.firstinspires.ftc.teamcode.config.TuningConfig;
+import org.firstinspires.ftc.teamcode.opmodes.DualLauncher;
 import org.firstinspires.ftc.teamcode.opmodes.Launcher;
 import org.firstinspires.ftc.teamcode.opmodes.PollenAuto;
 import org.firstinspires.ftc.teamcode.subsystems.GameMechanism;
@@ -106,6 +107,9 @@ public final class Persistence {
             // losing it on stop would throw the session away — unlike the Pedro tuners' distances,
             // which are per-run settings and deliberately not persisted.
             Launcher.class,
+            // The two-motor launcher bench test. Same reason as Launcher, and kept separate so
+            // tuning one never overwrites the other.
+            DualLauncher.class,
             // The camera transform: lens height, camera pitch, target height. You tune these by
             // watching VisionCalibration against a tape measure, so losing them on stop would throw
             // the whole session away.
