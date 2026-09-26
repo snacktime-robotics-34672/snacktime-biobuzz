@@ -20,6 +20,7 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-26
+- Single Launcher now drives `L_INTAKE`, and Dual Launcher drives `L_INTAKE` + `R_INTAKE` (Expansion Hub ports 0 and 1), instead of the drive motors. Dual Launcher gains `secondMotorReversed` (Panels, read at init) in case the two motors face each other and would fight; check direction at `maxPower` 0.2 first. Anything that runs the intake will now spin the launcher too. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Target RPM is back on the Driver Station for Single Launcher and Dual Launcher, above the RPM line(s), so you can see what the D-pad set. Error, power and Loop Hz stay on Panels. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Single Launcher and Dual Launcher now show only RPM on the Driver Station (Dual shows one line per motor). Target RPM, error, power and Loop Hz moved to Panels, so have Panels open when tuning. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Renamed the single-motor launcher test's file and class from `Launcher` to `SingleLauncher`, so it is clearly different from `DualLauncher` in the code as well as on the Driver Station. Its saved tuning moves from `Launcher.*` to `SingleLauncher.*` keys; `Persistence` carries the old names across, so no tuning is lost. Needs a full install. (`opmodes/SingleLauncher.java`, `util/Persistence.java`)

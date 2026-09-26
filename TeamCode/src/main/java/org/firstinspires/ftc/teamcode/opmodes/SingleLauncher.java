@@ -16,9 +16,13 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * SingleLauncher — a bench test for a launcher wheel, held at a chosen speed in RPM.
  *
  * THE MOTOR: one goBILDA Yellow Jacket, 435 RPM (13.7:1), plugged into the port the hub
- * configuration calls `LF_Motor`. That name is the front-left DRIVE motor in §10, so any drive
- * OpMode (TeleOp, autos, SystemsCheck) will spin the launcher too until it has a port and name of
- * its own. Change {@link #MOTOR_NAME} when it does.
+ * configuration calls `L_INTAKE` (Expansion Hub port 0). That name belongs to the INTAKE in §10,
+ * so anything that runs the intake — the TeleOp right trigger, SystemsCheck — spins the launcher
+ * too until it has a port and name of its own. Change {@link #MOTOR_NAME} when it does.
+ *
+ * EXPANSION HUB COST: every write to this motor crosses the RS485 link to the second hub, which
+ * costs more loop time than a Control Hub port (§10). The loop already skips repeat writes; watch
+ * Loop Hz on Panels.
  *
  * *** {@link #ticksPerRev} MUST MATCH THE MOTOR, or every RPM on this screen is wrong. *** Encoders
  * count ticks, not revolutions. A Yellow Jacket counts 28 ticks per turn of the bare motor shaft,
@@ -135,7 +139,7 @@ public class SingleLauncher extends LinearOpMode {
      * The launcher motor's configuration name. Read once at init, so changing it needs a restart
      * of the OpMode, not just a dashboard edit.
      */
-    private static final String MOTOR_NAME = "LF_Motor";
+    private static final String MOTOR_NAME = "L_INTAKE";
 
     @Override
     public void runOpMode() {

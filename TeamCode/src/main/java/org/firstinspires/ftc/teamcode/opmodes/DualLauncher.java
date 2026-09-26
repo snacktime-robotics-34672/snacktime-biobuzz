@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.util.BulkReads;
@@ -18,9 +19,20 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * one never touches the other.
  *
  * THE MOTORS: two goBILDA Yellow Jacket 6000 RPM (1:1) motors, plugged into the ports the hub
- * configuration calls `LF_Motor` and `LR_Motor`. Those names are the front-left and left-rear DRIVE
- * motors in §10, so any drive OpMode (TeleOp, autos, SystemsCheck) spins the launcher too until it
- * has ports and names of its own. Change {@link #MOTOR_NAME} and {@link #SECOND_MOTOR_NAME} then.
+ * configuration calls `L_INTAKE` and `R_INTAKE` (Expansion Hub ports 0 and 1). Those names belong to
+ * the INTAKE in §10, so anything that runs the intake — the TeleOp right trigger, SystemsCheck —
+ * spins the launcher too until it has ports and names of its own. Change {@link #MOTOR_NAME} and
+ * {@link #SECOND_MOTOR_NAME} then.
+ *
+ * *** CHECK THE DIRECTION BEFORE FULL POWER. *** Both motors get the same power. If they are
+ * mounted facing each other, the same power turns them opposite ways and they FIGHT: the wheel
+ * barely moves while both motors strain. {@link #secondMotorReversed} fixes that. Test with
+ * {@link #maxPower} at 0.2: the wheel should spin freely and the two RPM lines should roughly match.
+ * If the wheel hardly turns or the motors hum, release X at once, flip the flag, and restart the OpMode.
+ *
+ * EXPANSION HUB COST: every write to these motors crosses the RS485 link to the second hub, which
+ * costs more loop time than a Control Hub port (§10). The loop already skips repeat writes; watch
+ * Loop Hz on Panels.
  *
  * *** {@link #ticksPerRev} MUST MATCH THE MOTORS, or every RPM on this screen is wrong. *** A Yellow
  * Jacket counts 28 ticks per turn of the bare motor shaft, times the gearbox ratio. These are 1:1,
@@ -130,11 +142,19 @@ public class DualLauncher extends LinearOpMode {
     public static double maxPower = 1.0;
 
     /**
+     * Turns {@link #SECOND_MOTOR_NAME} the other way. Set this when the two motors are mounted
+     * facing each other, or they fight — see the class comment for the bench check. false keeps
+     * both motors turning the same way, as before. Read once at init, so restart the OpMode after
+     * you change it.
+     */
+    public static boolean secondMotorReversed = false;
+
+    /**
      * The launcher motors' configuration names. Read once at init, so changing either needs a
      * restart of the OpMode, not just a dashboard edit.
      */
-    private static final String MOTOR_NAME = "LF_Motor";
-    private static final String SECOND_MOTOR_NAME = "LR_Motor";
+    private static final String MOTOR_NAME = "L_INTAKE";
+    private static final String SECOND_MOTOR_NAME = "R_INTAKE";
 
     @Override
     public void runOpMode() {
@@ -164,6 +184,12 @@ public class DualLauncher extends LinearOpMode {
         // braking dumps that energy into the gearboxes on every shot.
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         secondMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        // Set once here rather than per loop, so the loop never pays for it. Reversing the
+        // direction reverses the encoder too, so both RPM lines still read positive when the wheel
+        // spins the right way.
+        secondMotor.setDirection(secondMotorReversed
+                ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
 
         telemetry.addLine(RobotIdentity.resolve().banner());
         telemetry.addLine("Hold X to spin up. D-pad UP / DOWN changes the target speed.");
