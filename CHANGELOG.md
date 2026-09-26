@@ -20,6 +20,7 @@ one-command rollback target is easy to find later.
 ---
 
 ## 2026-09-26
+- Target RPM is back on the Driver Station for Single Launcher and Dual Launcher, above the RPM line(s), so you can see what the D-pad set. Error, power and Loop Hz stay on Panels. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Single Launcher and Dual Launcher now show only RPM on the Driver Station (Dual shows one line per motor). Target RPM, error, power and Loop Hz moved to Panels, so have Panels open when tuning. (`opmodes/SingleLauncher.java`, `opmodes/DualLauncher.java`)
 - Renamed the single-motor launcher test's file and class from `Launcher` to `SingleLauncher`, so it is clearly different from `DualLauncher` in the code as well as on the Driver Station. Its saved tuning moves from `Launcher.*` to `SingleLauncher.*` keys; `Persistence` carries the old names across, so no tuning is lost. Needs a full install. (`opmodes/SingleLauncher.java`, `util/Persistence.java`)
 - Renamed the single-motor launcher test on the Driver Station from `Launcher` to `Single Launcher`, so it reads clearly next to `Dual Launcher`. Only the displayed name changed; the class and its saved tuning keys are still `Launcher`. Needs a full install. (`opmodes/Launcher.java`)

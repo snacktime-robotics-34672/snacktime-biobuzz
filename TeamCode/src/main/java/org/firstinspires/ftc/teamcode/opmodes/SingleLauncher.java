@@ -54,8 +54,8 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * short it settles, and whether it recovers after a shot. Encoder velocity rides the bulk read, so
  * reading it costs nothing extra (§4).
  *
- * WHERE THE NUMBERS ARE: the Driver Hub shows RPM only. Target RPM, error, power and Loop Hz are
- * on Panels, so have Panels open when you tune.
+ * WHERE THE NUMBERS ARE: the Driver Hub shows Target RPM and RPM only. Error, power and Loop Hz
+ * are on Panels, so have Panels open when you tune.
  *
  * LOOP-TIME READOUT (on Panels): required even though this never runs in a match. The D term divides by
  * the measured loop time, so timing is part of the control law — a loop that stutters makes the
@@ -244,8 +244,10 @@ public class SingleLauncher extends LinearOpMode {
                 lastPower = power;
             }
 
-            // Driver Hub: RPM and nothing else — the one number you watch while the wheel spins
-            // (§8 glanceable, §4 rule 6). Numbers, not built strings (§4 rule 8).
+            // Driver Hub: target and actual RPM, nothing else — the D-pad moves the first, the
+            // wheel follows with the second (§8 glanceable, §4 rule 6). Numbers, not built strings
+            // (§4 rule 8).
+            telemetry.addData("Target RPM", targetRpm);
             telemetry.addData("RPM", rpm);
             telemetry.update();
 

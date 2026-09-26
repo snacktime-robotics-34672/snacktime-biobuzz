@@ -55,8 +55,8 @@ import org.firstinspires.ftc.teamcode.util.RobotIdentity;
  * OTHER too: same power and very different speeds means one motor is loaded, geared or wired
  * differently from the other. Both are free to read — encoder velocity rides the bulk read (§4).
  *
- * WHERE THE NUMBERS ARE: the Driver Hub shows RPM only. Target RPM, error, power and Loop Hz are
- * on Panels, so have Panels open when you tune.
+ * WHERE THE NUMBERS ARE: the Driver Hub shows Target RPM and RPM only. Error, power and Loop Hz
+ * are on Panels, so have Panels open when you tune.
  *
  * LOOP-TIME READOUT (on Panels): required even though this never runs in a match. The D term divides by
  * the measured loop time, so timing is part of the control law — a loop that stutters makes the
@@ -252,9 +252,10 @@ public class DualLauncher extends LinearOpMode {
                 lastPower = power;
             }
 
-            // Driver Hub: RPM and nothing else — one line per motor, so a motor falling behind the
+            // Driver Hub: target RPM, then one RPM line per motor, so a motor falling behind the
             // other is visible at a glance (§8 glanceable, §4 rule 6). The captions are constants
             // joined at compile time, so this builds no strings per loop (§4 rule 8).
+            telemetry.addData("Target RPM", targetRpm);
             telemetry.addData("RPM " + MOTOR_NAME, rpm);
             telemetry.addData("RPM " + SECOND_MOTOR_NAME, secondRpm);
             telemetry.update();
